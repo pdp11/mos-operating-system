@@ -1,0 +1,3 @@
+*.sml linguist-language=assembly
+*.m11 linguist-language=assembly
+*.mac linguist-language=assembly
