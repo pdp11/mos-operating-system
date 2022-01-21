@@ -1,0 +1,2373 @@
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+               TERMINAL INTERFACE UNIT NOTEBOOK
+
+               VOLUME 1 -- USER'S GUIDE
+
+               April 1979
+
+
+               By: James E. Mathis
+                   Keith S. Klemba
+                   Andrew A. Poggio
+
+
+               ARPA Order No. 2302
+               Contract No. MDA903-78-C-0126
+               Effective Date:  1 November 1977
+               Expiration Date:  31 October 1979
+               SRI Project No. 6933
+
+               This research was sponsored by the Defense Advanced
+               Research Projects Agency under ARPA Order No. 2302,
+               Contract MDA903-78-C-0126, monitored by Dr. V. Cerf.
+
+               The views and conclusions contained in this document are
+               those of the authors and should not be interpreted as
+               necessarily representing the official policies, either
+               express or implied, of the Defense Advanced Research
+               Projects Agency or the United States Government.
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+                                SUMMARY
+
+
+     This manual is Volume 1 of SRI's Terminal Interface Unit Notebook
+
+and is intended as a User's Guide to the TIU.  The TIU Notebook
+
+describes the Terminal Interface Unit developed by SRI as it is used to
+
+connect terminals to the Packet Radio Network.  Volume 2 provides
+
+detailed documentation on the internal operation of the TIU, Volume 3
+
+describes the TIU hardware, and Volume 4 describes the PDP-10-resident
+
+support software.
+
+
+     In this first major revision, several new sections were added with
+
+the intent of better documenting the TIU from a user's viewpoint.  This
+
+includes a section on loading the TIU, on using the console-emulator
+
+ODT, and on the use of the operator control module, OPCON.  The sections
+
+on the traffic source and XRAY process were updated to reflect changes
+
+in those modules.
+
+
+     The software in the TIU is undergoing continual improvement and
+
+change as additional functionality is added, bugs corrected, and
+
+compatibility is maintained with the other components of the Packet
+
+Radio Network.  The TIU Notebook will be revised from time to time to
+
+include these new features.  To expedite information exchange, the TIU
+
+Notebook is being released in draft form and may contain some
+
+typographical errors and minor formatting problems.
+
+
+
+
+                                   ii
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+                                CONTENTS
+
+
+
+SUMMARY .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    ii
+
+
+   I THE TERMINAL INTERFACE UNIT   .  .  .  .  .  .  .  .  .  .  .     1
+
+     A.   TIU Functions   .  .  .  .  .  .  .  .  .  .  .  .  .  .     2
+
+     B.   TIU Hardware Configuration  .  .  .  .  .  .  .  .  .  .     3
+
+     C.   TIU Software Structure   .  .  .  .  .  .  .  .  .  .  .     6
+
+
+  II USING THE TIU  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    11
+
+     A.   Loading the TIU .  .  .  .  .  .  .  .  .  .  .  .  .  .    11
+
+
+ III LSI-11 CONSOLE OPERATION   .  .  .  .  .  .  .  .  .  .  .  .    13
+
+
+  IV THE OPERATOR CONTROL PROCESS  .  .  .  .  .  .  .  .  .  .  .    17
+
+     A.   The OPCON Process  .  .  .  .  .  .  .  .  .  .  .  .  .    17
+
+     B.   OPCON Command Summary .  .  .  .  .  .  .  .  .  .  .  .    19
+
+
+   V TRAFFIC STREAM COMMAND PARSER .  .  .  .  .  .  .  .  .  .  .    21
+
+     A.   TSPAR Command Descriptions  .  .  .  .  .  .  .  .  .  .    22
+
+     B.   Sample Operating Session .  .  .  .  .  .  .  .  .  .  .    24
+
+     C.   Example Printout of TIU Cumstats  .  .  .  .  .  .  .  .    24
+
+
+  VI XRAY--THE CROSS RADIO DEBUGGER   .  .  .  .  .  .  .  .  .  .    27
+
+     A.   Command Input   .  .  .  .  .  .  .  .  .  .  .  .  .  .    28
+
+     B.   Command Output  .  .  .  .  .  .  .  .  .  .  .  .  .  .    29
+
+     C.   Connection Commands   .  .  .  .  .  .  .  .  .  .  .  .    29
+
+                                  iii
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     D.   Memory Commands .  .  .  .  .  .  .  .  .  .  .  .  .  .    30
+
+     E.   Route Commands  .  .  .  .  .  .  .  .  .  .  .  .  .  .    31
+
+     F.   Input/Output Radix Commands .  .  .  .  .  .  .  .  .  .    32
+
+
+ VII TELNET USER'S GUIDE  .  .  .  .  .  .  .  .  .  .  .  .  .  .    33
+
+     A.   The TELNET Command Format   .  .  .  .  .  .  .  .  .  .    33
+
+     B.   TELNET Commands .  .  .  .  .  .  .  .  .  .  .  .  .  .    34
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   iv
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                    I   THE TERMINAL INTERFACE UNIT
+
+
+     A number of requirements have motivated the development of a small
+
+processing unit that interfaces user terminals to a packet-switching
+
+network.  One of the basic functions performed by a terminal interface
+
+unit (TIU) is converting character streams at a user terminal into
+
+packets at the PRNET interface.  Terminals in the PRNET also require
+
+software support to provide users with control of network access and to
+
+guarantee reliability of operation.  When a mobile user of the network
+
+temporarily moves out of coverage, for example, the end devices must
+
+store and retransmit any packets which might be lost in transit.  In
+
+order to provide a reliable network utility, the end terminals must
+
+exchange acknowledgments to ensure that data is delivered to the user
+
+without bit errors, without any missing or duplicate packets, and in the
+
+correct order.
+
+
+     As an outgrowth of the terminal interfacing activity, the TIU has
+
+acquired several other important PRNET capabilities.  The TIU plays an
+
+integral part in the PRNET measurement activities by acting as an
+
+artificial traffic source (and traffic sink).  The TIU's role in network
+
+maintenance is enlarging with the incorporation of a remote-PRU
+
+debugging program (XRAY).
+
+
+
+
+
+
+                                   1
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     The LSI-11 microprocessor was chosen for the TIU for its low cost,
+
+high performance, and programming compatibility with other PRNET
+
+processors such as the packet radio station PDP-11/40.
+
+
+A.   TIU Functions     ___ _________
+
+
+     A primary function of the TIU is to support network terminal
+
+access.  The TIU software supports I/O to interactive terminals and
+
+provides a command language which is used to establish communication
+
+with hosts or other terminals on the PRNET or other ARPA networks.  This
+
+software implements a structure of communication protocols that are used
+
+within the network.  At the base of this structure exists the means of
+
+transporting packets to or from an attached packet radio unit via a bit-
+
+serial asynchronous interface [].*  The next layer supports packet
+
+header processing for control of packet transport within the PRNET [].
+
+This layer may also enhance the reliability of transport by performing
+
+acknowledgment, retransmission, and sequencing with the use of the PRNET
+
+station-to-packet radio protocol (SPP)  [].  Another layer provides an
+
+end-to-end reliable mechanism for internetwork communication using the
+
+TCP (Cerf-Kahn) protocol  [].  The final layer comprises the process-
+
+to-process or user-to-process protocols; the TELNET protocol  [] is
+
+used to interface terminal-type devices to terminal-oriented processes.
+
+
+     Network measurement and experimentation are supported by the
+
+measurement and traffic source programs in the TIU.  These modules
+
+
+
+--------------------
+* References are listed at the end of the report.
+
+                                   2
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+specifically support the network measurement capabilities that have been
+
+defined by UCLA.  Network measuring is envisioned as a continuous
+
+activity during normal PRNET operations, with selected nodes performing
+
+relevant instrumentation tasks under control of the PRNET station.
+
+
+     Playing a role in general network maintenance and monitoring, the
+
+TIU can be used to remotely examine and alter the memory contents of
+
+selected PRUs.  This module also allows manual entry of point-to-point
+
+routes into PRUs.
+
+
+B.   TIU Hardware Configuration     ___ ________ _____________
+
+
+     The TIU software can operate on many different LSI-11 hardware
+
+configurations,* ranging in size from 12K to 31K words of memory and
+
+from one to eight asynchronous terminal lines.  The archetypal TIU
+
+hardware configuration consists of a DEC PDP-11/03 microcomputer,
+
+additional system modules, an SRI-constructed 1822 interface module, and
+
+an SRI-constructed rear connector/control panel.**
+
+
+     The PDP-11/03 is the packaged version of the LSI-11.  It consists
+
+of the LSI-11 processor, a modular power supply, and a mounting box.
+
+The mounting box contains a 8-slot backplane for holding and
+
+interconnecting the system modules.  In addition to the processor, the
+
+
+--------------------
+* A more detailed description of various LSI-11 hardware configurations
+is given in Volume 3 of the TIU Notebook.
+
+
+** Detailed descriptions and diagrams of the SRI 1822 interface and TIU
+rear panel are contained in SRI's Quarterly Technical Report No. 5 [],
+which is reproduced in the TIU Notebook Volume 3.
+
+                                   3
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+backplane can hold up to six dual (half-board, 5-inch wide) system
+
+modules or up to three quad (full board, 10-inch wide) modules.  These
+
+are accessible from the front of the chassis by removing the front
+
+panel.  The power supply assembly contains three front panel switches
+
+and indicators, immediately accessible to the user through a front panel
+
+cutout.  The power supply also contains a 60 Hz line-time clock.  The
+
+mounting box is designed to stand alone or mount in a standard 19-inch
+
+rack, and is 3-1/2 inches in height.
+
+
+     The LSI-11 processor supports a full DEC PDP-11 instruction set
+
+compatible with the 11/34, 11/40 family.  The primary differences are
+
+that the LSI-11 provides a single priority interrupt level, whereas the
+
+11/40 provides four levels, has a slower execution speed, and does not
+
+support memory management.  Prominent features of the LSI-11 include
+
+power-up/power-fail auto-restart processing, direct addressing of 32K by
+
+16 bits of memory (or 64K 8-bit bytes), vector and priority interrupt
+
+handling, and a user octal debugging technique, ODT, supported through
+
+microcode.  We are also using the (optional) KEV11 extended arithmetic
+
+chip on the processor board, which supports integer multiply and divide
+
+instructions as well as floating-point arithmetic.
+
+
+     A minimal TIU configuration contains a total of 12K words of
+
+memory, consisting of the 4K on the KD11-F processor board and two dual-
+
+height DEC MSV11-B 4K RAM boards.  Other memory options, such as core,
+
+PROM, ROM, or higher-density RAM, may be employed in expanded
+
+configurations.  This flexibility of memory type and quantity available
+
+
+
+                                   4
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+for the LSI-11 is a very real advantage, especially in an experimental
+
+environment such as the PRNET.
+
+
+     The additional DEC system modules used in the TIU consist of one
+
+DLV11 serial line unit* and a DRV11 parallel line unit.  Each device
+
+requires a dual-height (5-inch wide) slot.  The serial line unit
+
+provides an EIA terminal interface, and the parallel line unit drives
+
+the SRI-constructed 1822 interface.
+
+
+     In summary, a minimal TIU configuration would consist of six
+
+modules as follows:
+
+
+     .  KD11-F microcomputer, with 4Kx16 RAM and KEV11 extended
+        arithmetic chip
+
+     .  MSV11-B 4Kx16 RAM memory, 2 units
+
+     .  DLV11 serial line unit (RS-232 interface)
+
+     .  DRV11 parallel line unit
+
+     .  1822 interface (driven by DRV11).
+
+
+     For additional information on the DEC system configuration and LSI-
+
+11 components, refer to DEC's Microcomputer Handbook [].  Further
+
+details on the various TIU hardware configurations may be found in
+
+Volume 3 of the Notebook.
+
+
+
+
+
+
+
+
+--------------------
+* Terminal multiplexor versions of the TIU may have more than one DLV11
+to support multiple user terminals.
+
+                                   5
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+C.   TIU Software Structure     ___ ________ _________
+
+
+     The TIU software consists of a set of modules that provide
+
+communication protocol support, operator interaction, and network
+
+measurement and management capability.
+
+
+     1.   The MOS Operating System          ___ ___ _________ ______
+
+
+          The TIU functions are supported by a small operating system,
+
+named MOS, which performs I/O functions to external devices and handles
+
+timesharing of processes in the TIU.  We define a "process" as an
+
+autonomous sequence of states characterized by the value of a program
+
+counter and register set.  The process acts as a virtual processor which
+
+executes programs as if in parallel with other processes in the system.
+
+We define a "procedure" as a sequence of instructions that a process may
+
+call in order to perform some action (such as allocation of a free
+
+packet buffer).  A "primitive" is a procedure which performs a system-
+
+wide function.
+
+
+          MOS performs a simple round-robin scheduling of TIU processes,
+
+thus avoiding contention and mutual exclusion problems associated with
+
+preemptive scheduling.  Processes are statically created when the TIU
+
+software is generated.  Processes communicate by means of short
+
+messages, called signals.  A process may cause a signal to be sent by
+
+making a special call to the MOS system and can suspend its operation
+
+until it receives a specific signal in reply.
+
+
+
+
+
+                                   6
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     2.   PRNET Interface Software          _____ _________ ________
+
+
+          The Dispatch/SPP (DSP) modules provide the means for
+
+dispatching incoming packets to various TIU processes and handles
+
+retransmission and sequencing by means of the PRNET SPP protocol.  One
+
+DSP module contains a process that initiates a set of input requests
+
+from the PRU interface.  These requests are queued by the I/O facility
+
+provided by MOS, and cause the DSP process to receive a signal upon I/O
+
+completion.  Another DSP module contains a set of primitives which are
+
+called by TIU processes to enable transmission and reception of packets
+
+or the opening/closing of SPP connections.  These primitives control the
+
+allocation and releasing of tables that are used for dispatching,
+
+sequencing, and statistics collection on a per-connection basis.  An
+
+additional process called the TOP generator is responsible for the
+
+generation of Terminal On Packets (TOPs) which announce to the station
+
+the mapping between logical (process) destination address and physical
+
+network address.
+
+
+     3.   Traffic Generation          _______ __________
+
+
+          The traffic generator is used within the TIU to facilitate
+
+PRNET testing and performance evaluation.  The traffic generation
+
+modules contain an operator command interpreter, a packet formatter, and
+
+a process that controls packet traffic for network testing.  The packet
+
+traffic is divided into streams, with each stream either sourcing or
+
+sinking traffic.  The operator interface provided by the command
+
+
+
+
+                                   7
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+interpreter allows the TIU user to specify packet generation parameters,
+
+such as packet size and interpacket delay, for each stream.  These
+
+commands are communicated to the traffic stream process, which in turn
+
+activates the streams according to the specified parameters.  As noted
+
+above, the collection of traffic connection statistics is an operational
+
+function of the DSP process.
+
+
+     4.   Measurement Facilities          ___________ __________
+
+
+          The TIU measurement facilities allow for the collection of
+
+several types of TIU cumulative statistics (cumstats) and for the
+
+control of traffic streams remotely by the PRNET station.  The station
+
+measurement process initiates the collection of TIU cumstats and
+
+controls TIU traffic streams over a cumstats connection to the TIU
+
+measurement process.  The TIU measurement process communicates with the
+
+traffic stream process by the signalling mechanism.  It also
+
+periodically sends back cumstats to the station measurement process
+
+while the measurement experiment is in progress.
+
+
+     5.   PRU Debugging Support          ___ _________ _______
+
+
+          The TIU XRAY process is designed to satisfy the need to
+
+remotely debug PRUs and TIUs when researchers and network development
+
+personnel are located not at the station site, but at a remote terminal
+
+which may be vehicle-mounted and mobile.  Effective testing of the
+
+mobile performance capabilities of the PRNET presupposes the capacity to
+
+remotely change PRU parameters, make patches to test protocol changes,
+
+
+
+                                   8
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+look at the good-neighbor tables of nearby repeaters, examine and alter
+
+point-to-point route assignments, and perform other, similar
+
+manipulations.  From any authorized TIU, the TIU XRAY process allows its
+
+operator to:
+
+
+     .  Display and alter arbitrary memory locations in PRUs and TIUs.
+
+     .  Display, alter, and erase point-to-point network routes in PRUs.
+
+
+     6.   TCP Protocol Support          ___ ________ _______
+
+
+          A set of processes are used within the TIU to support multiple
+
+TCP connections; each TCP process can support one TCP connection.  The
+
+TCP contains procedures that may be called by other TIU processes to
+
+initiate opening or closing of TCP connections and to send or receive
+
+data.  The TCP processes are assigned on a per-connection basis as other
+
+TIU processes request the opening of connections.
+
+
+     7.   Operator Control Process          ________ _______ _______
+
+
+          As the capabilities of the TIU and the number of application
+
+programs in the TIU expanded, dedicating a terminal, (assigned at system
+
+generation time) to a specific process restricted the system's
+
+flexibility and necessitated a large number of terminals per TIU.  To
+
+overcome this problem, an operator control process was installed in the
+
+TIU.
+
+
+          The facilities provided in this initial version of the
+
+operator control module (OPCON) are limited.  The goal was to implement
+
+
+
+                                   9
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+only those facilities necessary to allow flexible application of the
+
+TIU.  The services OPCON provides include:
+
+
+     .  Displaying the status of TIU processes
+
+     .  Displaying TIU memory utilization
+
+     .  Directing output from a process to a specific terminal
+
+     .  Directing input from a terminal to a specific process
+
+     .  Discarding all output generated by a process.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   10
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                           II   USING THE TIU
+
+
+A.   Loading the TIU     _______ ___ ___
+
+
+     Before the TIU can be used, it must be loaded with the appropriate
+
+software.  The TIU can be loaded by three different means:
+
+
+     .  Manual loading via cassette tape
+
+     .  Manual loading via the LSI program
+
+     .  Automatic loading via the network.
+
+Of these, only the first is relevant to the casual user.  The second
+
+method is used during software debugging and checkout; and the final
+
+means is transparent to the casual user and happens automatically on TIU
+
+power-up.
+
+
+     1.   Manual Loading Via Cassette Tape          ______ _______ ___ ________ ____
+
+
+          Connect the EIA cable from the TI binary cassette terminal to
+
+the console EIA input on the LSI-11 backpanel.  The LSI-11 and the TI
+
+terminal should both be set for 1200 baud.  Apply power to the LSI-11;
+
+put the HALT/ENABLE switch in the ENABLE position; and disable the line-
+
+time clock by putting the LTC switch in the down position.
+
+
+          On the TI cassette switch panel lower row, set:
+
+
+     (1)  KEYBOARD to LINE
+
+
+
+                                   11
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     (2)  PLAYBACK to LINE
+
+     (3)  RECORD to OFF
+
+     (4)  PRINTER to LINE
+
+     (5)  TAPE FORMAT to CONT.
+
+Insert the tape cassette into the tape transport and ready it for
+
+loading by:
+
+
+     (1)  Setting CASSETTE to PLAYBACK
+
+     (2)  Pressing CASSETTE REWIND
+
+     (3)  Pressing LOAD/FF, when the END lamp lights.
+
+The READY lamp should light after a few seconds indicating that the
+
+cassette is ready for data transfer.
+
+
+          Type the BREAK key on the TI keyboard.  In response to an "@"
+
+prompt, type:
+
+                                177560L
+
+
+          Note:  the "L" must be upper case and should not be followed                                                       ___
+
+by a carriage return.
+
+
+          Press the PLAYBACK CONTROL (cassette switch panel middle row)
+
+CONT START switch; the terminal will then start reading the tape into
+
+the TIU.  When the "LOADING COMPLETE" message is typed out, press the
+
+PLAYBACK CONTROL STOP switch; the tape motion should stop.
+
+
+          Start the system by typing:
+
+                                  400G
+
+
+          Again, the "G" must be upper case.
+
+                                   12
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                     III   LSI-11 CONSOLE OPERATION
+
+
+     Except for the front panel switches controlling the DC power,
+
+HALT/ENABLE mode, and the line-time clock, the LSI-11 does not have an
+
+internal or external switch register or control function switches.
+
+Instead, the operator enters commands to display or alter machine state
+
+via the console terminal.  These commands are interpreted by special
+
+ROM-resident Octal Debugging Technique (ODT) microcode firmware which
+
+the LSI-11 processor automatically executes when it is in the Halt mode
+
+(not running a user program).  The Halt mode is entered in one of the
+
+following ways:
+
+
+     .  Executing the HALT instruction
+
+     .  Pressing the BREAK key on the console terminal
+
+     .  Executing an invalid instruction
+
+     .  Referencing a nonexistent memory location.
+
+Upon entering the Halt mode, the processor displays the location of the
+
+next instruction to be executed, which is always the contents of the
+
+program counter R7, and the "@" command prompt character.
+
+
+     The following is a list of ODT commands and how they are used with
+
+the console terminal; for a more complete discussion of the console ODT
+
+commands, refer to the DEC LSI-11 processor handbook.  Note that the
+
+LSI-11 prints a "?"  in response to illegal commands or to attempts to
+
+
+
+                                   13
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+reference a nonexistent memory location.  All commands to ODT must use
+
+upper-case only ASCII characters.
+
+
+/         The "slash" command is used to open and display a memory
+          location, general-purpose register, or the processor status
+          word.  It is normally preceded by a location identifier of the
+          form:
+
+
+          1000      A string of octal ASCII characters that specifies a
+                    memory location.
+
+          R0        The character "R" followed by a general-purpose
+                    register identifier in the range 0-7 that specifies
+                    one of the eight general-purpose registers.
+
+          RS        Specifies the processor status register.
+          If the "/" is used without a preceding location identifier,
+          the address of the last displayed location is used.
+
+RETURN    The "carriage-return" command is used to close an open
+          location.  If the contents of the open location are to be
+          changed, the RETURN should be preceded by the new value
+          specified as an octal ASCII character string.  If no change is
+          desired, the RETURN (without a preceding value) will not alter
+          the location's contents.
+
+LF        The "line-feed" command is used to modify the value of the
+          currently open location (if preceded by an octal value), close
+          the open location, and open and display the next sequential
+          location.
+
+^         The "up-arrow" command is used to modify the value of the
+          currently open location (if preceded by an octal value), close
+          the open location, and open and display the previous
+          sequential location.
+
+@         The "at-sign" command is used to close the open location and
+          open and display a second location, using the contents of the
+          first location as an indirect absolute address to the second
+          location.  Like the "^" command, an octal value preceding the
+          "@" command will first modify the contents of the first
+          location.
+
+L         The "L" command is used to load a program into the LSI-11 that
+          is in a special bootstrap format.  The command is preceded by
+          the address of the device from which to load the program.
+          This device is usually the console terminal port that has an
+
+
+                                   14
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+          address of 177560.  If no address or an incorrect address is
+          specified, the LSI-11 processor will likely "hang."  It is
+          necessary to cycle the power off and back on to recover from
+          this situation.
+
+G         The "G" command is used to start program execution at the
+          memory location typed immediately before the "G."  If the
+          HALT/ENABLE switch on the front panel is in the HALT position,
+          the execution does not take place and only the bus
+          initialization sequence is done.  In this case, the processor
+          returns to the console ODT mode.
+
+P         The "P" command is used to continue or resume execution of a
+          program at the location pointed to by the current contents of
+          the program counter, R7.  If the HALT/ENABLE switch on the
+          front panel is in the HALT position, a single instruction will
+          be executed, and the processor will return to the console ODT
+          mode after printing the contents of the PC and the "@" prompt.
+          In this fashion, it is possible to single instruction step
+          through a user program.  However, device interrupts will not
+          be recognized in the single step mode.
+
+M         The "M" command is used for maintenance purposes and prints
+          the contents of an internal CPU register that reflects how the
+          processor got into the console ODT mode.  The last octal digit
+          of the display is the only number of significance and is
+          encoded as follows:
+
+
+          0 or 4    Execution of HALT instruction or pressing BREAK key
+                    on console terminal.
+
+          1 or 5    Bus error occurred while getting device interrupt
+                    vector.
+
+          2 or 6    Bus error occurred while doing memory refresh.
+
+          3         Double bus error occurred (R6 contains nonexistent
+                    memory address).
+
+          4         Reserved instruction trap occurred.
+
+          7         A combination of 1, 2, and 4, which implies that all
+                    three conditions occurred.
+
+
+     When typing in either address or data octal values, the user can
+
+type a RUBOUT (or DELETE) character to erase the previously typed
+
+
+
+                                   15
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+character; the processor types a "\" (back-slash) for every typed
+
+RUBOUT.  Note that if the RUBOUT is issued repeatedly, only numerical
+
+characters are erased and it is not possible to terminate the current
+
+command.  If more than six RUBOUTs are consecutively typed, and then a
+
+valid location closing command is typed (such as RETURN), the open
+
+location will be modified with all zeros.  However, typing an invalid
+
+character, such as Control-C, will abort the typein.  The RUBOUT command
+
+also cannot be used while entering a register number.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   16
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                   IV   THE OPERATOR CONTROL PROCESS
+
+
+     As the capabilities of the TIU and the number of application
+
+programs in the TIU expanded, dedicating a terminal, (assigned at system
+
+generation time) to a specific process restricted the system's
+
+flexibility and necessitated a large number of terminals per TIU.  There
+
+is a specified but growing set of functions that the TIU can perform for
+
+a user or a small group of users--functions each user must be able to
+
+access in a dynamic manner.
+
+
+A.   The OPCON Process     ___ _____ _______
+
+
+     There are two ways of handling the dynamic assignment of terminals
+
+to tasks.  In the classical time-sharing system, each terminal is
+
+associated with an executive program, or EXEC, that manages program
+
+resources for the specific terminal; under EXEC a user can invoke an
+
+application process, such as a TELNET or traffic source program.  In
+
+this scheme the terminals are considered "fixed," and subsidiary
+
+processes are created or destroyed as required under user control.
+
+
+     The inverse type of organization is used in the PRNET station and
+
+operator communication module of the TOPS-20 operating system; in this
+
+organization the tasks or processes are assumed to be "fixed" and
+
+terminals are associated with or disassociated from a process whenever
+
+
+
+
+                                   17
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+necessary.  This second model closely parallels the situation in the TIU
+
+in that there is but one traffic source command parser program (TSPAR)
+
+and different users in sequence can command it to generate traffic.
+
+This scheme is limited by the absence of an EXEC program for managing
+
+program resources.  If two users wish to access a resource
+
+simultaneously, this resource is not duplicated (as would be the case
+
+using a time-sharing system's EXEC) and it therefore becomes the user's
+
+responsibility to resolve access conflicts.  This limitation is of minor
+
+consequence for current TIU usage, as all users operate in coordination
+
+and, as a rule, in close proximity to one another.  But this limitation
+
+does emphasize the fact that the current TIU was not designed as a
+
+general time-sharing system, but was rather envisioned to be used in a
+
+cooperative environment.
+
+
+     The facilities provided in this initial version of the operator
+
+control module (OPCON) are limited.  The goal, which has been achieved,
+
+was to implement only those facilities necessary to allow flexible
+
+application of the TIU.  The services OPCON provides include:
+
+
+     .  Displaying the status of TIU processes
+
+     .  Displaying TIU memory utilization
+
+     .  Directing output from a process to a specific terminal
+
+     .  Directing input from a terminal to a specific process
+
+     .  Discarding all output generated by a process.
+
+
+
+
+
+
+
+                                   18
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+B.   OPCON Command Summary     _____ _______ _______
+
+
+     In the following summary, <pid> represents a decimal process ID and
+
+<char> represents any character typed by the user.  The user need only
+
+type enough characters to disambiguate the command; in most case the
+
+first character is sufficient.  The following commands are for revision
+
+2 of OPCON.
+
+
+STATUS <pid>   The SYSTAT command is used to determine the state of a
+               specified process or of all processes if no process ID is
+               supplied.  A process can be in one of six states:
+
+
+               IDL       Process is idle and is awaiting completion of
+                         some external event (such as asynchronous I/O)
+
+               RDY       Process is ready to run and is waiting to use
+                         the CPU
+
+               IOW       Process i waiting for synchronous I/O to
+                         complete
+
+               DET       Process has output ready to be typed-out and is
+                         waiting for a terminal to "TALK" to it (see
+                         below)
+
+               BPT       Process suspended at an XNET breakpoint (not
+                         currently implemented)
+
+               FZN       Process frozen due to error.
+
+TALK <pid>     The TALK command is used to start an interaction with a
+               specific process.  After issueing the TALK command, all
+               user input (except for the OPCON escape character) is
+               given to the specified process and any process-generated
+               output is displayed on the user's terminal.
+
+FLUSH <pid>    The FLUSH command is used to discard all subsequent
+               output from a process until another TALK command is
+               issued to the process.
+
+MEMSTAT        The MEMORY command is used to obtain information about
+               the TIU's global memory pool usage.  The statistics are
+               expressed as the decimal number of bytes
+
+
+                                   19
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+               Busy    Currently allocated to some process
+
+               Idle    Previously allocated but freed and available for
+                       reuse
+
+               Free    Never allocated from the primary storage segment.
+               The interpretation of these statistics are dependent on
+               the details of the memory allocation algorithm.
+
+ESCAPE <char>  The ESCAPE command is used to change the OPCON escape
+               character from the default Control-P.  The new escape
+               character is typed by the user.
+
+BREAKPOINT     The BREAKPOINT command is used to enter DDT (the symbolic
+               debugger) to allow inspection of memory or placing of
+               breakpoints.  System operation is resumed by the DDT
+               Proceed command Escape-P.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   20
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                   V   TRAFFIC STREAM COMMAND PARSER
+
+
+     The traffic stream command parser (TSPAR) allows control of up to
+
+four traffic streams.  When the TIU is initially started, TSPAR prints
+
+out a header and a prompt which indicates which traffic stream is being
+
+controlled.  The prompt is "TSn:" where n is the number of the stream
+
+(0-3).  To switch to another traffic stream the user types "SW" followed
+
+by a number which specifies the new traffic stream number to be
+
+controlled.
+
+
+     Several commands are described below which allow the specification
+
+of parameters and control of traffic streams.  Two types of traffic
+
+streams may be specified.  An SPP stream which is a reliable connection
+
+using end-to-end acknowledgments and retransmissions or a transparent
+
+stream which does not use end-to-end acknowledgments or retransmissions.
+
+Within these two types the traffic stream can be specified as either a
+
+sink or a source.
+
+
+     A traffic sink, when started, simply listens until another traffic
+
+source (could be from the same TIU) starts sending packets to it.  In
+
+the case of an SPP connection, the packets received are acknowledged and
+
+discarded.  For a transparent connection, the packets are discarded
+
+only.  When the connection is closed, the sink goes back into a
+
+listening state.
+
+
+
+                                   21
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     A traffic source periodically sends packets to the destination
+
+specified by the "TO" command.  In the TIUs the traffic streams have
+
+preassigned logical IDs of "6nXX" where n is the traffic stream number
+
+and XX is the low byte of the TIU ID.  Traffic sources can have
+
+themselves as a destination; in which case the traffic stream acts both
+
+as a traffic source and a sink.
+
+
+A.   TSPAR Command Descriptions     _____ _______ ____________
+
+
+TO x           Set traffic source destination where "x" is the hex value
+               for the destination ID, with a maximum value of FFFF.
+
+PL x           Set packet length including header to be the hex value
+               "x."  "x" can range from 0-7F for transparent and B-7F
+               for SPP streams.
+
+DE d           Set inter-packet generation time to be "d" milliseconds,
+               ranging from 0 to 65535.
+
+N n            Sets the number of packets to be sent on a traffic
+               source.  For n=0 the traffic source will stop and for n =
+               -1 the traffic source will transmit indefinitely.
+
+SP             Specifies stream as an SPP connection.
+
+TR             Specifies stream as a transparent connection.
+
+SR             Specifies stream as a source.
+
+SK             Specifies stream as a sink.  Note: For a sink stream no
+               parameters need to be specified.
+
+PP             Specifies that the stream use a point-to-point route
+               defined in the terminal PR.
+
+FW             Specifies that the stream should be forwarded through the
+               station.
+
+G              Start traffic source transmitting or start traffic sink
+               listening.
+
+P              Pause generation of traffic on a source stream.  No-op
+               for a sink stream.  To continue use the "G" command.
+
+
+                                   22
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+S              Stop traffic source or sink.
+
+SW n           Switch to traffic stream n where n ranges from 0 to 3.
+
+LC             List out on the terminal the cumulative statistics for
+               the current traffic stream.
+
+LO             List all open connections.
+
+LA             List all cumulative statistics for the TIU.
+
+ZC             Initialize cumulative statistics for the current traffic
+               stream.
+
+ZA             Zero all TIU cumulative statistics.
+
+?P             List current parameter settings.
+
+
+     Below is listed the more specialized commands for setting specific
+
+values in the packet header and text.  The commands that affect the
+
+header can only be used on transparent connections.
+
+
+TE "string"    Packet text definition where the string enclosed in
+               quotes can be an arbitrary string of characters.  If the
+               string length plus the header length exceed the current
+               packet length setting then the packet length is adjusted
+               accordingly.
+
+LM H           Sets the list mode for the "?T" command to hexadecimal
+               listing.
+
+LM A           Sets the list mode for the "?T" command to ASCII listing.
+
+?T             Prints out the current text definition.
+
+HL x           Set the header length to the hex value of x.
+
+HE list        Set the header definition according to a list of hex word
+               values (leading zeros not required) separated by blanks.
+               Multiple words may be indicated by m*n, where the hex
+               word "n" will be used "m" times.
+
+
+
+
+
+
+
+                                   23
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     Note that all command lines are terminated by a carriage return.
+
+Also all commands and parameters are separated by at least one space.
+
+To edit a command entry, the del key may be typed to back-up one
+
+character.  To abort the command, Control-C or Control-U may be typed.
+
+
+B.   Sample Operating Session     ______ _________ _______
+
+
+C.   Example Printout of TIU Cumstats     _______ ________ __ ___ ________
+
+
+          Local ID = 6003  Foreign ID = 6003  SPP
+
+          Cumstat Time - 0:16:33.750
+          43956  Bytes Sent
+          44352  Bytes Rcv
+          22  Bytes Rtx
+          14241  Cum ETE Time
+          1998  Pkt Tx
+          2016  Pkt Rcv
+          1  Pkt Rtx
+          1006  Ack's Sent
+          1010  Ack's Rcv
+          18  Dup Ack's Rcv
+          14  Pkt Rcv Before Window
+          0  Dup Pkt Rcv
+          0  Pkt Rcv Beyond Window
+          992  Pkt Sent With Arq
+
+          Discrete Retransmission Frequency Spectrum
+
+          1  - 1 RTX
+          0  - 2 RTX
+          0  - 3 RTX
+          0  - 4 RTX
+          0  - 5 RTX
+          0  - 6 RTX
+          0  - 7 RTX
+          0  - 8 RTX
+          0  - 9 RTX
+          0  - 10 RTX or more
+
+          End to End Delay time Spectrum (ACK time)
+
+          349  - 12 Ticks (200 ms)
+          515  - 15 Ticks (250 ms)
+          48  - 18 Ticks (300 ms)
+
+                                   24
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+          25  - 21 Ticks (350 ms)
+          13  - 24 Ticks (400 ms)
+          10  - 27 Ticks (450 ms)
+          8  - 30 Ticks (500 ms)
+          5  - 33 Ticks (550 ms)
+          7  - 36 Ticks (600 ms)
+          6  - 42 Ticks (700 ms)
+          3  - 48 Ticks (800 ms)
+          3  - 60 Ticks (1000 ms)
+          0  - 72 Ticks (1200 ms)
+          0  - 90 Ticks (1500 ms)
+          0  - 120 Ticks (2000 ms)
+          0  - 150 Ticks (2500 ms)
+          0  - 180 Ticks (3000 ms)
+          0  - 300 Ticks (5000 ms)
+          0  - 900 Ticks (15000 ms)
+          0  -  overflow bucket
+          ---------
+
+
+     The TIU cumstat printout has three sections.  The first is a list
+
+of various counters pertaining to the connection.  The second is a
+
+retransmission frequency spectrum and the third is the end-to-end delay
+
+time spectrum (ACK time).  The following is a description of each line
+
+of the TIU cumstat printout.
+
+
+Line 1         Local ID of connection and foreign ID of connection.  The
+               "SPP" indicates that the connection is SPP.
+
+Line 2         Cumstat time stamp in hours:minutes:seconds.milliseconds.
+
+Line 3         Number of bytes sent including the header.  This does not
+               include retransmitted bytes.
+
+Line 4         Number of bytes received including header.
+
+Line 5         Number of retransmitted bytes including header.  Note
+               that this does not include the original transmission of
+               the packet.
+
+Line 6         Cumulative delay time (ACK time) in ticks.
+
+Line 7         Number of packets transmitted.  Includes all packets sent
+               on this connection.
+
+
+
+                                   25
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+Line 8         Number of packets received.  Includes any packets
+               dispatched to this connection.  For example ACKs, SYNs,
+               duplicates, etc.
+
+Line 9         Number of retransmitted packets.
+
+Line 10        Number of ACKs sent.
+
+Line 11        Number of ACKs received.
+
+Line 12        Number of duplicate ACKs received.
+
+Line 13        Number of packets received with sequence number less than
+               the left window edge (LWE).  The LWE is the next expected
+               sequence number.
+
+Line 14        Number of packets received with sequence numbers within
+               the window and were duplicates.
+
+Line 15        Number of packets received with a sequence number greater
+               than the right window edge (RWE).
+
+Line 16        Number of packets sent with the acknowledgment request
+               (ARQ) bit set.
+
+
+     The discrete retransmission frequency spectrum contains ten buckets
+
+with a bucket size of one.
+
+
+     The end-to-end delay time spectrum (ACK time) contains nineteen
+
+buckets with the limits given in ticks and milliseconds.  The last
+
+bucket is an overflow.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   26
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                  VI   XRAY--THE CROSS RADIO DEBUGGER
+
+
+     TIU XRAY* is a process that resides in a packet radio network
+
+(PRNET) terminal interface unit (TIU) and is used for cross-network
+
+debugging.**  The primary debugging capability offered by XRAY is the
+
+facility for examining and/or depositing memory contents of remote
+
+processors, which include the microprocessors in the packet radio units
+
+(PRUs) as well as such attached devices as the LSI-11 TIUs.  In addition
+
+to its remote debugging capability, TIU XRAY implements a set of
+
+commands for examining and altering point-to-point (PTP) routes in the
+
+PRU routing tables.  Future plans for upgrading TIU XRAY call for
+
+developing a limited symbolic capability, for easier debugging of PRUs.
+
+The symbolic capability will avoid the tedious and error-prone current
+
+procedure of referring to PRU parameters by their absolute hexadecimal
+
+addresses.
+
+
+     TIU XRAY is interactive, accepting commands from the user and
+
+displaying information on the user's terminal.  Although it is basically
+
+a word-oriented debugger, it has the capability for debugging byte-
+
+oriented hardware as well (e.g., PRUs use 16-bit word addressing,
+
+
+--------------------
+* XRAY is a loose acronym for cross-radio debugger.
+
+
+** A predecessor version of XRAY, which was written by BBN in BCPL, is
+available to the station operator at a local terminal connected to the
+station PDP-11.
+
+                                   27
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+whereas TIUs use 8-bit byte addressing).  For byte-oriented hardware,
+
+addresses are specified with even numbers and one memory address cell is
+
+associated with two address units.  A request to display the contents of
+
+memory locations from 1000 to 1004 inclusively in a byte-oriented
+
+machine results in the display of three even-numbered locations: 1000,
+
+1002 and 1004.
+
+
+     TIU XRAY is written in the BLISS11 high-level language and runs
+
+under the MOS operating system using a very small (20-word) BLISS11 run-
+
+time library.  TIU XRAY transmits and receives information over the
+
+PRNET in the form of command packets which are interpreted by matching
+
+server processes in the destination machines.  Beginning with version
+
+4.8 of CAP, all PRUs will support command packets for the display memory
+
+and alter memory functions.  Currently all TIUs that have the server
+
+XRAY (RDEBUG) process in their load module will respond to XRAY command
+
+packets.
+
+
+A.   Command Input     _______ _____
+
+
+     Commands consist of a two-letter code, either upper- or lower-case,
+
+optionally followed by one or more numbers separated by spaces.
+
+Commands are terminated by carriage return.
+
+
+     Certain special characters (which have been selected to be
+
+compatible with editing characters commonly used on the Tenex and TOPS20
+
+systems of ARPANET hosts) are interpreted during input as follows:
+
+
+
+
+
+                                   28
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+Control-A      Delete the last character from the command string.
+
+DEL            Delete the last character from the command string.
+
+Control-W      Delete the last word from the command string.
+
+Control-X      Abort the command.
+
+Control-U      Abort the command.
+
+Control-R      Retype the current line.
+
+?              Summary of available commands.
+
+
+     Numbers are entered according to the current input/output radix.
+
+Radices 8, 10 and 16 are supported.  The default radix is 16.  Numbers
+
+preceded by a minus sign are interpreted as negative (two's complement).
+
+
+B.   Command Output     _______ ______
+
+
+     Numbers are displayed according the current input/output radix.
+
+Long outputs may be aborted by typing Control-O.
+
+
+C.   Connection Commands     __________ ________
+
+
+     1.   Open Connection--OP          ____ ______________
+
+
+          The OP command opens a connection between XRAY and the
+
+specified packet radio network identifier (ID); this ID, together with
+
+its associated XRAY server process and hardware, will be referred to
+
+collectively as the destination.  The OP command requires one numeric
+
+argument, which is the ID.
+
+
+OP 9008        Open connection to destination 9008
+
+
+
+
+                                   29
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     2.   Close Connection--CL          _____ ______________
+
+
+          The CL command closes the connection currently open between
+
+XRAY and the destination.  It takes no arguments.
+
+
+CL             Close connection
+
+
+D.   Memory Commands     ______ ________
+
+
+     1.   Display Memory--DM          _______ __________
+
+
+          The DM command is used to display the contents of the
+
+destination's memory.  The command takes one or more numeric arguments,
+
+interpreted as follows:
+
+
+     .  One argument--Display the contents of memory at this location.
+
+     .  Two or more arguments--Interpret the arguments as a set of
+        pairs; the first number in each pair is the lower bound and the
+        second the upper bound.  Display memory from each lower bound to
+        upper bound, inclusively.
+
+
+DM 1000        Display contents of location 1000.
+
+DM 1000 1004   Display contents of locations 1000 through 1004.
+
+DM 10 20 30 40 Display contents of locations 10 through 20 and locations
+               30 through 40.
+
+
+     2.   Alter Memory--AM          _____ __________
+
+
+          The AM command is used to alter the contents of memory in the
+
+destination.  The command takes two or more numeric arguments
+
+interpreted as follows:
+
+
+
+
+                                   30
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     .  The first argument is the address at which memory altering will
+        begin.
+
+     .  The second argument is the value which will be placed in the
+        address specified by the first argument.
+
+     .  Arguments following the second argument will be placed at higher
+        addresses.
+
+
+          Examples of the AM command are as follows:
+
+
+AM 1000 5      The value 5 will be put into location 1000.
+
+AM 1000 5 7    The value 5 will be put into location 1000, and the value
+               7 will be put into location 1002 if the destination is
+               byte-oriented--but into location 1001 if the destination
+               is word-oriented.
+
+
+E.   Route Commands     _____ ________
+
+
+     The route commands are used to manipulate the routes stored in
+
+PRUs.  Each command requires a source ID and destination ID for the
+
+route specified.  A value of zero (0) for either ID is interpreted as a
+
+wild card that will match any existing ID.
+
+
+     1.   Display Route--DR          _______ _________
+
+
+          The DR command is used to display routes contained in a PRU.
+
+The command requires either no arguments at all--which is interpreted as
+
+a request to display all routes--or two numeric arguments specifying
+
+source ID and destination ID of the route, respectively.  Examples:
+
+
+DR             Displays all routes stored in the PRU.
+
+DR 9008 9009   Display the route from 9008 to 9009.
+
+
+
+
+                                   31
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     2.   Alter Route--AR          _____ _________
+
+
+          The AR command is used to change the routes stored in the
+
+PRUs.  The command requires a source and a destination ID followed by
+
+zero or more IDs defining the route.  Examples:
+
+
+AR 9008 9009 A020   Set a route from 9008 to 9009 via A020
+
+AR 9008 9006        Set a route from 9008 directly to 9006.
+
+
+     3.   Erase Route--ER          _____ _________
+
+
+          The ER command is used to erase routes stored in the PRUs.
+
+The command requires a source and a destination ID.
+
+
+ER 9008 9008   Erase the route from 9008 to 9008.
+
+
+F.   Input/Output Radix Commands     ____________ _____ ________
+
+
+     1.   Radix Octal--RO          _____ _________
+
+
+          This command changes XRAY's input/output radix to octal.
+
+
+     2.   Radix Decimal--RD          _____ ___________
+
+
+          This command changes XRAY's input/output radix to decimal.
+
+
+     3.   Radix Hexadecimal--RH          _____ _______________
+
+
+          This command changes XRAY's input/output radix to hexadecimal.
+
+
+
+
+
+
+
+                                   32
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+
+
+
+
+
+                       VII   TELNET USER'S GUIDE
+
+
+     One of the functions of the TIU is to provide network access for
+
+portable packet radio terminals.  It becomes necessary to provide a
+
+means of interfacing a user at a terminal to the network communication
+
+protocols, notably TCP, and thereby to the net to which he is attached.
+
+This interface must provide for establishment and control of network
+
+connections, specification of various operating options, and handle the
+
+interactive data flow between the network and the user.  In the PRNET,
+
+as in the ARPANET, the TELNET protocol [] is used as the standard
+
+method of interfacing terminal-type devices to terminal-oriented
+
+processes.
+
+
+A.   The TELNET Command Format     ___ ______ _______ ______
+
+
+     The TIU TELNET process presents a user interface similar to that of
+
+an ARPANET TIP. []  Commands begin with an intercept character and are
+
+terminated by a carriage-return or a rubout (delete), depending on
+
+whether the user is satisfied with the command or wishes to abort it.
+
+The intercept character initially defaults to an "@" but may be changed
+
+to any other character (subsequent examples assume use of the "@"
+
+intercept character).  To transmit the intercept character, it is typed
+
+twice.  Thus, to send one "@", the user would type:
+
+                                   @@
+
+
+
+                                   33
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     Commands may occur anywhere and need not start on a new line.
+
+Upper and lower case characters may be intermixed.
+
+
+B.   TELNET Commands     ______ ________
+
+
+     The TIU TELNET provides commands for opening TCP connections to
+
+remote hosts or terminals and for specifying desired echo and
+
+transmission modes, and handles the negotiation of TELNET command
+
+options and the translation of the local terminal into a network virtual
+
+terminal.  The TELNET user commands are:
+
+
+@O <TCP>,<net>,<socket>  Opens a full-duplex connection specified by the
+                         foreign net, TCP and socket numbers, and the
+                         implied local socket.
+
+@S <TCP>,<net>,<socket>  Opens a "persistent" connection.  Taking the
+                         same parameters as the "@O" command, the TELNET
+                         will try to open a connection, and repeatedly
+                         try to reopen a connection using the supplied
+                         parameters whenever the current connection
+                         closes.  The TELNET is returned to its normal
+                         state by the "@R" command.
+
+@C                       Closes the current connection, resetting all
+                         temporarily changed modes back to their
+                         original values.
+
+@R                       Resets the TELNET connection state.  The herald
+                         and version number is outputed; if open, the
+                         connection is closed; the transmission mode
+                         reset to character-at-a-time; and the desired
+                         echo mode reset to remote.
+
+@I <number>              Set a new command intercept character, default
+                         intercept character is "@" or character code
+                         64.
+
+@V                       Outputs the TELNET herald and version number.
+
+@TC                      Sets character-at-a-time transmission mode, the
+                         default transmission mode.
+
+
+
+                                   34
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+@TW                      Sets word-at-a-time transmission mode.
+
+@TL                      Sets line-at-a-time transmission mode.
+
+@E R                     Sets the desired echo mode to remote, the
+                         default echo mode.
+
+@E L                     Sets the desired echo mode to local.
+
+@P T                     Enables TELNET protocol handling, the default
+                         condition.
+
+@P X                     Disables TELNET protocol handling.
+
+@G                       Initiates traffic generation.  Generation
+                         terminated by any typin.
+
+@B                       Binary (8-bit) transmission.
+
+
+     1.   Opening Connections          _______ ___________
+
+
+          The "@O" and "@S" commands are used to open TELNET
+
+connections.  If the command parameter fields are omitted, as signified
+
+by two consecutive commas with trailing commas optional, default values
+
+are used.  The TCP host parameter field defaults to the previously
+
+specified TCP; the net field defaults to the ARPANET if the TCP number
+
+is less than 4096, and to the local network if larger than 4095; the
+
+socket field defaults to TELNET service, socket number one.  These
+
+parameters may be specified symbolically, or numerically in decimal.  If
+
+the value of any parameter is zero, the connection is opened in the
+
+"listening" mode and the TELNET effectively becomes a server process.
+
+
+          The "@S" command provides for a "sticky" open.  That is, the
+
+connection attempt is automatically repeated when the connection closes
+
+or aborts.  The TELNET remains in this mode until reset by the "@R"
+
+command.
+
+                                   35
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+          Examples of the open commands are:
+
+
+@O 51               Open connection to TCP host 51 (SRI-KA), network 10
+                    (ARPANET), and socket one (TELNET server).
+
+@O KA,10,ECHO       Open connection to TCP host KA, network 10, and
+                    socket 67 (echo server).
+
+@S ,,TELNET         Open a persistent connection to the previously
+                    specified TCP (ISIA), the default network (ARPANET),
+                    and socket one (TELNET server).
+
+@O 0,0,0            Open a listening connection and accept a connection
+                    request from any host, network, and foreign socket.
+
+@O 0,ARPANET        Open a listening connection and accept a connection
+                    request from any host on the ARPANET with the
+                    foreign socket being one (TELNET server).
+
+
+     2.   Transmission Mode Commands          ____________ ____ ________
+
+
+          Three modes of text transmission are supported by the TELNET--
+
+character, word, or line.  They are invoked by the "@T C", "@T W", or
+
+"@T L" commands, respectively.  When in character mode, the default, the
+
+TELNET attempts to transmits each character immediately upon typin.
+
+This is the normal mode of operation to an interactive timesharing host,
+
+such as a TENEX or TOPS-20 site.  When in word mode, the TELNET attempts
+
+to economize on network utilization by buffering characters into logical
+
+units, or words, before transmission.  A word is defined as a sequence
+
+of alphabetical, numeric or special characters, terminated by a control
+
+character, punctuation, or format effector.  A word is also terminated
+
+by a 1.5 second pause in typing.  When in line mode, the TELNET is
+
+directed to buffer all input until a line delimiter (carriage-return) is
+
+typed.  The transmission mode commands instruct the TELNET about
+
+
+
+                                   36
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+conditions on which it must transmit input characters; the TELNET may
+
+elect to transmit buffered data sooner than required to prevent internal
+
+buffer overflow.
+
+
+     3.   Echo Mode Commands          ____ ____ ________
+
+
+          The TELNET supports three modes of typein data echoing--local,
+
+remote, and none.  When in local mode, the TELNET echoes all typein
+
+(except for certain control characters, such as control-Q) before
+
+sending to the remote host; in remote echo mode, the TELNET sends all
+
+typein to the remote site, expecting it to echo characters as needed.
+
+Echo none mode is similar to remote echo, in that typein is not echoed
+
+by the TIU TELNET; however, remote echo is a state that requires
+
+negotiation with the remote TELNET server; echo none does not require
+
+negotiation.  When the connection becomes established, the remote echo
+
+option will be negotiated with the remote TELNET server.  If the
+
+connection is already established, it is negotiated immediately.  If the
+
+remote TELNET server refuses to do the remote echoing, the user is
+
+notified and the echo mode is not changed.
+
+
+     4.   Protocol Mode Commands          ________ ____ ________
+
+
+          The TELNET process may be used to communicate with a remote
+
+non-TELNET protocol server process, usually for test purposes.  In the
+
+non-protocol mode, the TELNET does not scan the data stream for TELNET
+
+control messages and will not participate in TELNET option negotiations.
+
+This mode is signified by the "@P X" command; the TELNET process reverts
+
+to the normal TELNET protocol handling with the "@P T" command.
+
+                                   37
+20 April 1979                  D R A F T                        at 16:53
+
+
+
+     5.   Traffic Generation          _______ __________
+
+
+          The TELNET process can be used to generate TCP traffic.  The
+
+traffic is a repeating pattern of decimal digits, 0 through 9, which are
+
+sent to the remote process but not echoed locally.  Traffic generation
+
+is terminated by any user typin.  Traffic generation is initiated by the
+
+"@G" command.
+
+
+     6.   Close Connection Command          _____ __________ _______
+
+
+          After opening a connection, the "@C" command is used to close
+
+the established connection, or to abort the connection attempt.
+
+
+     7.   Reset Modes Command          _____ _____ _______
+
+
+          The "@R" command may be used to return the TELNET modes to
+
+their default state.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   38
+

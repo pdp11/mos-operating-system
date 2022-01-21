@@ -1,0 +1,26 @@
+	.TITLE	ANETGTBL - ARPANET gateway routing tables
+
+	.INSRT	utlmac-1.sml
+	.INSRT	inet-1.sml
+
+	.CSECT	XINETD, STATIC
+
+	.GLOBL	$GATBL			;gateway routing table
+
+
+$GATBL:	.WORD	10.			;Define through NET 12
+	.WORD	0
+	GWAY	2,0,5			;Net 1 - a PRNET
+	GWAY	3,0,51.			;Net 2 - a PRNET
+	GWAY	2,0,5			;Net 3
+	GWAY	0			;Net 4
+	GWAY	0			;Net 5
+	GWAY	1,0,51.			;Net 6 - a PRNET
+	GWAY	0			;Net 7
+	GWAY	0			;Net 8
+	GWAY	0,0,38.			;Net 9 - a PRNET
+	GWAY	0			;Net 10	
+
+
+	.END
+

@@ -1,0 +1,1362 @@
+; Fixed typo in RCVRST & updated RST processing to fix protocol bug
+;<MOS-DEVEL>TV4PRO-1.M11.11     9-Oct-79 17:03:12    EDIT BY MATHIS
+; Fixed RCVACK to return "no error" return code
+;<MOS-DEVEL>TV4PRO-1.M11.9     4-Oct-79 15:47:11    EDIT BY MATHIS
+; Fixed bug near SNDTXT by deleting conditional call to XMTPKT
+; Fixed half-open connection logic
+; Initial release
+	.TITLE	TCPV4 -- TCP Version 4 Protocol Handling Routines
+
+
+	.INSRT	utlmac-1.sml
+	.INSRT	tv4cnf-2.sml
+	.INSRT	tv4tbl-1.sml
+	.INSRT	tv4mac-1.sml
+	.INSRT	pktdef-1.sml
+	
+
+	.CSECT	TCPI
+
+	.SBTTL	Linkage to other modules
+
+;
+; Linkage to other modules:
+;
+; This file contains the protocol-specific routines for handling the
+; TCP Version 4 protocol.  The following protocol processing entry points
+; are defined:
+;
+	.GLOBL	OPNCON			;Open connection handler
+	.GLOBL	CLSCON			;Close connection handler
+	.GLOBL	SNDCON			;Process user SEND
+	.GLOBL	RCVCON			;Data received by user processing
+
+	.GLOBL	RCVPKT			;Received packet handler
+	.GLOBL	SNDPND			;Send packet handler
+	.GLOBL	RTXCON			;Retransmission handler
+
+	.GLOBL	INIPKT			;Initialize packet header
+	.GLOBL	XMTPKT			;Transmit packet
+
+	.GLOBL	INIQ			;Initialize Q-descriptor
+	.GLOBL	ADDQ			;Add entry to a queue
+	.GLOBL	DELQ			;Delete entry from a queue
+
+;
+; The protocol handlers interface with operating system and user-interface 
+; specific routines in the main module.  The following entry points are
+; required:
+;
+	.GLOBL	GETSEQ			;Get timer-based initial seq number
+	.GLOBL	NOTIFY			;Notify user process of connection 
+					;  state change
+	.GLOBL	GETPKT			;Get packet buffer storage
+	.GLOBL	OUTPKT			;Output packet to network
+	.GLOBL	FRETCB			;Release TCB storage
+
+	.GLOBL	USRRST			;Reset user interface
+	.GLOBL	USRABT			;Abort user sends in progress
+	.GLOBL	USRRCV			;Handle received data
+	.GLOBL	USRACK			;Handle ACK for data
+	.GLOBL	USRSND			;Handle sending user data
+	.GLOBL	USRRTX			;Handle retransmission of data
+
+;
+; The protocol handlers also interface to common TCP storage
+;
+	.GLOBL	$TCBQ			;Queue of specified TCBs
+	.GLOBL	NULTCB			;TCB for sending RSTs on nonexistant
+					;  connections
+
+
+TCPPRO	=	6			;This is support for TCP version 4
+					; INET protocol number 6
+
+
+	.LIST	MEB
+	.ENABL	ISD
+
+
+	.SBTTL
+	.SBTTL	Handle User request protocol processing
+	.SBTTL	.	OPNCON - Process user's open request
+;
+; OPNCON is called when a signal is received indicating that a user has 
+; done an open request.  The user interface open routine is responsible for 
+; allocating the TCB, for copying the foreign and local socket values into 
+; the TCB, for setting the TCB state to 0, and performing other operating
+; system or host specific operations as necessary.
+;
+; Called with:	TCB - pointer to active tcb
+;
+
+OPNCON:	
+;
+; First, correct for the PDP-11 addressing funnies by byte-swapping the
+; word fields of the address.
+;
+;	SWAB	LADDR+2(TCB)		;Swap local TCP ID,[KSK,11/11]
+	SWAB	LPORT(TCB)		;  and port
+;	SWAB	FADDR+2(TCB)		;Swap foreign TCP ID[KSK,11/11]
+	SWAB	FPORT(TCB)		;  and port
+;
+; Next, pick the initial send sequence number based on the clock.
+;
+	CALL	GETSEQ			;Get a time-based seq number
+	MOV	R0,SNDSEQ(TCB)		;and store it away
+	MOV	R1,SNDSEQ+2(TCB)
+;
+; Next, set the initial values for the various timers.
+;
+	MOVB	#MAXTRY,MRETRY(TCB)	;Set max number of retransmissions
+	MOVB	#RTXTMO,RTXDLY(TCB)	;and the default rtx timeout
+;
+; If the foreign address is not fully specified, set the ST.USP (unspecified 
+; address) and ST.WLD (wild-card address match) flags
+;
+	MOV	FADDR(TCB),R2		;Get foreign address
+	BIS	FADDR+2(TCB),R2		;Merge in TCP id
+	BIS	FPORT(TCB),R2		;and foreign port
+	BNE	1$			;If all zero, unspecified
+	BIS	#ST.USP!ST.WLD,STATE(TCB)	;Indicate unspecified address
+;
+; Then insert the TCB at the end of the TCB list.  
+;
+1$:	MOV	#$TCBQ,R0		;Get pointer to Q-descriptor
+	MOV	TCB,R1			;Point to TCB to be inserted
+	CALL	ADDQ			; and place it at the tail of the Q
+;
+; Finally, reset the TCB into a known state and initiate sending a SYN
+; if appropriate.
+;
+	CLR	WORK(TCB)		;Reset work to do flags
+	CALL	RSTTCB			;Initialize the connection
+	CALL	SNDPND			;Send SYN if necessary
+	RET				;And return to main loop
+
+	.SBTTL	.	CLSCON - Initiate connection closing procedures
+
+;
+; CLSCON is called to initiate connection closing procedures.  This routine
+; will determine the proper action to be taken to get the connection
+; closed and do what is necessary.  Two actions may be taken:
+;	1) if the connection is in a losing state, it will simply be aborted
+;	2) otherwise, the FIN handshake is started.  
+; A losing state is defined as: not yet synchronized by exchange of SYNs 
+; and ACKs, foreign TCP not responding, or if the FIN handshake has been 
+; started but not completed for some reason.
+;
+; Called with:	TCB - pointer to active tcb
+;
+
+CLSCON:	BIT	#ST.SA,STATE(TCB)	;Are we synchronized on send side
+	BEQ	1$			;If not, abort connection
+	BIT	#ST.FS!ST.SPN,STATE(TCB);Sent a FIN or "tcp not responding"
+	BNE	1$			;If so, just abort connection
+	BIC	#ST.SND,STATE(TCB)	;Indicate can't send over connection
+	BIS	#ST.FS,STATE(TCB)	;Indicate FIN sent
+	BIS	#FL.FIN,WORK(TCB)	;  and set SEND FIN work flag
+	BR	2$
+1$:	CALL	ABTCON			;If receive side not set-up or user
+					;  really insistent, just go away
+2$:	CALL	SNDPND			;Send FIN if needed
+	RET				;and return
+
+
+	.SBTTL	.	SNDCON - Process user's SEND request
+
+;
+; SNDCON is called when the user sends some data over its TCP connection.
+; Since the actual sending of data is handled by the general packet output
+; routine, SNDCON just indicates that user data is awaiting transmission
+; and calls SNDPND.
+;
+; Called with:	TCB - pointer to connection's TCB
+;
+
+SNDCON:	BIS	#FL.TXT,WORK(TCB)	;Indicate user text awaiting
+	CALL	SNDPND			;send it if possible
+	RET
+
+	.SBTTL	.	RCVCON - Handle user receiving data
+
+;
+; RCVCON is called after the user has received some data.  It first 
+; checks to see if the next octet is a FIN.  If so, it processes 
+; receiving the FIN.  In any case, an ACK is sent for the data received
+; by the user.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+RCVCON:	BIT	#ST.FW,STATE(TCB)	;Is a FIN waiting?
+	BEQ	1$			;If not, skip
+	CALL	HNDFIN			;Handle awaiting FIN
+1$:	BIS	#FL.ACK,WORK(TCB)	;Ack data received by user
+	CALL	SNDPND			; and try to send it
+	RET
+
+	.SBTTL
+	.SBTTL	Input Packet Handling Routines
+	.SBTTL	.	RCVPKT - Received packet processing
+
+;
+; The folowing routines are used to process incoming packets.  After the
+; I/O is complete, the top-level process performs any necessary preprocessing
+; (such as interactions with the I/O system and checking transfer status)
+; and then calls the input packet handling routine RCVPKT.
+;
+; RCVPKT first calls the CHKFMT routine. It checks the format of the header 
+; for correctness and calculates the checksum on the packet. If the checksum 
+; detects an error, an error code is returned to the caller of RCVPKT and
+; the packet should be discarded.
+;
+; After the packet has passed initial format checks, FNDTCB is called to 
+; determine for which connection (and hence TCB) the packet is destined.  
+; FNDTCB searches the list of TCBs and if no matching TCB is found, an 
+; error is returned and a RST packet transmitted to the other end if
+; appropriate.
+;
+; After the matching TCB is found, SWPBYT is called to convert the header
+; into the standard internal format and then actual processing can begin on 
+; the packet by calling various routines to handle the control and data 
+; contained in the packet.  
+;
+; Called with:	HDR - Pointer to the TCP header
+;
+
+RCVPKT:	CALL	CHKFMT			;Check packet format and checksum
+	BNE	8$			;If something wrong, ignore
+	CALL	FNDTCB			;Find the TCB for this packet
+					;  TCB <- ptr to TCB for connection
+	BNE	10$			;If error, skip
+	$LOG	R.RCV			;Bump received packet count
+	CALL	SWPBYT			;Convert header to internal format
+	BITB	#TC.RST,TH.CTL(HDR)	;A RESET packet?
+	BEQ	1$			;If not, skip
+	CALL	RCVRST			;Handle RESET packet
+	BR	8$			;and exit
+
+1$:	BIS	#FL.DUP,WORK(TCB)	;Set duplicate pkt flag
+	BITB	#TC.SYN,TH.CTL(HDR)	;A SYN packet?
+	BEQ	2$			;If not, skip
+	CALL	RCVSYN			;Handle SYN packet
+	BNE	8$			;If bad packet, exit
+
+2$:	BITB	#TC.ACK,TH.CTL(HDR)	;An ACK packet?
+	BEQ	3$			;If not, skip
+	CALL	RCVACK			;Handle ACK packet
+	BNE	11$			;If bad packet, exit
+
+3$:	BIT	#ST.RCV!ST.FS,STATE(TCB)	;Connection established?
+	BEQ	9$			;If not, send a RST is needed
+	CALL	RCVWDW			;Handle window updating
+	BITB	#TC.URG,TH.CTL(HDR)	;Urgent offset supplied?
+	BEQ	4$			;If not, skip
+	CALL	RCVURG			;Handle receive urgent pointer
+
+4$:	MOVB 	TH.HLN(HDR),R0		;Get data offset field
+	BIC	#^C360,R0		; and clear out garbage
+	ASR	R0			;Calculate header length 
+	ASR	R0
+	SUB	R0,PH.DL(HDR)		;Calculate amount of text present
+	BEQ	5$			;If none, skip
+	CALL	RCVTXT			;Handle received user data
+
+5$:	BITB	#TC.FIN,TH.CTL(HDR)	;A FIN packet?
+	BEQ	6$			;If not, skip
+	CALL	RCVFIN			;Handle FIN packet
+
+6$:	CLR	R0			;Indicate packet ok
+	BIT	#FL.DUP,WORK(TCB)	;Duplicate flag still set?
+	BEQ	8$			;If not, not duplicate packet
+	TST	PH.DL(HDR)		;Any text in packet?
+	BNE	7$			;If so, better send ACK for duplicate
+	BITB	#TC.SYN!TC.FIN,TH.CTL(HDR)	;Any control in packt
+	BEQ	8$			;If not, don't need to send ACK
+7$:	BIS	#FL.ACK,WORK(TCB)	;Set 'send ack' flag if duplicate
+	$LOG	PR.DUP			;Count number of duplicates received
+8$:	$PUSH	R0			;Save receive packet return code
+	BIC	#ST.SPN,STATE(TCB)	;Connection not in suspended state
+	BIC	#FL.DUP,WORK(TCB)	;Reset duplicate flag
+	CALL	SNDPND			;Send any pending work
+	$POP	R0			;Set return code
+	RET
+
+;
+; A packet has been received while the connection is still opening.  Accept
+; the packet if it was a SYN (was validated by the RCVSYN routine), but
+; return RST packet for all others.
+;
+9$:	BITB	#TC.SYN,TH.CTL(HDR)	;SYN control packet?
+	BNE	12$			;If so, skip
+	$LOG	NR.NOP			;Log error
+	MOV	#ER.NOP,R0		;Packet received on unopen connection
+	BR	11$
+;
+; Handle packets received on non-existant conection by sending back a
+; RST message for all packets but a RST.
+;
+10$:	$LOG	PR.NOX			;Count number of packets received on
+					;  nonexistant connection
+11$:	BITB	#TC.RST,TH.CTL(HDR)	;Is this a RST packet
+	BNE	12$			;If so, don't respond with a RST
+	$PUSH	R0			;Remember error code
+	CALL	SNDRST			;Send a RST to reset other side
+	$POP	R0			;Recover error code
+12$:	RET				;and exit
+
+	.SBTTL	.	CHKFMT - Verify packet format and checksum
+
+;
+; CHKFMT is called to check the format of the TCP header and verify the 
+; checksum.  The format validation checks that:
+;	- the protocol number is correct
+;	- the TCP header length is greater than the minimum required
+; If any of these tests are not passed, an error indicator is returned.
+;
+; Called with:	HDR - pointer to start of TCP header in packet
+;
+; Returns with:	R0 - Return code
+;			Z=1, If no errors
+;			Z=0, If packet format invalid
+;
+
+CHKFMT: CMPB	PH.PRO(HDR),#TCPPRO	;Right protocol number?
+	BNE	2$			;If not, error
+	MOVB	TH.HLN(HDR),R0		;Get data offset field
+	BIC	#^C360,R0		;Clear extra bits
+	CMPB	R0,#<<TH.LEN-PH.LEN>/4>*20	;Header length minimum required?
+	BLO	3$			;If not, bad packet
+	CALL	CHKSUM			;Calculate packet checksum
+	TST	R0			;Check result
+	BNE	4$			;If not zero, pkt damaged
+1$:	RET
+
+2$:	MOV	#ER.PRO,R0		;Error - wrong protocol number
+	BR	1$
+3$:	MOV	#ER.HDL,R0		;Error - bad header length
+	BR	1$
+4$:	MOV	#ER.CHK,R0		;Error - checksum wrong
+	BR	1$
+
+	.SBTTL	.	RCVRST - Process received RESET packet
+
+;
+; RCVRST is called to process a received packet with the RST control flag.
+; The RST control flag takes priority over all other flags and is processed
+; first. First, the routine verifies that the RST refers to a packet that we 
+; have sent by checking that the connection is fully specified (unspec 
+; connections don't send packets) and that the ACK field refers to an 
+; un-ACKed packet.
+;
+; Called with:	TCB - Pointer to TCB
+;		HDR - Pointer to TCP header
+;
+; Returns with:	R1 - scratch
+;		R0 - return code
+;			Z=1, If RST handled OK
+;			Z=0, If invalid RST
+;
+
+RCVRST:	SUB	LWESEQ+2(TCB),TH.ACK+2(HDR)	;Calculate # of octets ACKed
+	SBC	TH.ACK(HDR)
+	SUB	LWESEQ(TCB),TH.ACK(HDR)
+	BNE	3$			;If negative or too large, reject RST
+	MOV	LWESEQ+2(TCB),R1	;Calculate # of unacked octets
+	MOV	LWESEQ(TCB),R0
+	SUB	SNDSEQ+2(TCB),R1
+	SBC	R0
+	SUB	SNDSEQ(TCB),R0
+	CMP	TH.ACK+2(HDR),R1	;RST ACK something not sent?
+	BHI	3$			;If so, reject it
+	$LOG	R.RST			;Count number of RSTs received
+;
+; The RST has been validated.  How it is handled depends on the state
+; of the connection.  
+;	- If the connection has been established, notify the user process 
+;	  of a "connection error" and close the connection.
+;	- If we are trying to open the connection and the user was passive 
+;	  as indicated by ST.USP or ST.LSN = 1, just reinitialize the 
+;	  connection state information and quietly go back into the passive 
+;	  listening state.
+;	- If we were actively trying to open the connection and have 
+;	  retransmitted the SYN more than MAXRFS number of times, notify the 
+;	  user process with "refused" and close the connection.  If this 
+; 	  limit has not been exceeded, ignore the RST.
+;
+	BIT	#ST.RCV!ST.SND,STATE(TCB) ;Connection usable for data transfer
+	BEQ	1$			;If not, skip
+	MOV	#SG.ERR,R0		;Indicate a 'connection error'
+	CALL	NOTIFY			;and notify user process
+	BR	2$			;and delete the connection
+1$:	CMPB	RETRY(TCB),#MAXRFS	;Tried to open enough times?
+	BLO	3$			;If not, ignore error message
+	MOV	#SG.RFS,R0		;Indicate connection 'refused'
+	CALL	NOTIFY			;and notify user process
+2$:	CALL	ABTCON			;Then abort the connection
+3$:	CLR	R0			;Indicate no further pkt processing
+	RET
+
+4$:	MOV	#ER.RST,R0		;Error - invalid RST received
+	RET
+
+	.SBTTL	.	RCVSYN - Process a SYN packet
+
+;
+; RCVSYN - Handles received SYN packets
+;
+; Called with:	TCB - Pointer to active TCB
+;		HDR - Pointer to TCP header
+;
+; Returns with:	R0 - Return code
+;			Z=1, If no errors
+;			Z=0, If packet invalid
+;
+
+RCVSYN:	BIT	#ST.SR,STATE(TCB)	;Have we received a SYN?
+	BEQ	1$			;If not, skip
+;
+;   Since we have already received one SYN, accept only duplicates of the 
+; original SYN.
+;
+	CMP	TH.SEQ(HDR),INISEQ(TCB)	;See if its a delayed duplicate
+	BNE	6$			;If not, half-open connection
+	CMP	TH.SEQ+2(HDR),INISEQ+2(TCB)
+	BNE	6$
+	BR	4$			;Indicate packet acceptable
+
+;
+;   Since the connection is not synchronized, accept any SYN packet
+; or only a SYN,ACK that acks our SYN.
+;
+1$:	BITB	#TC.ACK,TH.CTL(HDR)	;Packet ack anything?
+	BEQ	2$			;If not, skip & process SYN
+	BIT	#ST.SS,STATE(TCB)	;Have we sent a SYN?
+	BEQ	5$			;If not, invalid ACK error
+;
+; If TH.ACK = SNDSEQ  then the ACK is acceptable
+;
+	CMP	TH.ACK(HDR),SNDSEQ(TCB)	;See if it acks the outstanding syn
+	BNE	6$			;If not, invalid ACK error
+	CMP	TH.ACK+2(HDR),SNDSEQ+2(TCB)
+	BNE	6$			;If not equal, invalid ACK error
+;
+; Accept the SYN and process it.
+;
+2$:	BIS	#ST.SR,STATE(TCB)	;Set 'SYN received' flag
+	BIC	#ST.WLD,STATE(TCB)	;Clear address wild-card match flag
+	BIC	#FL.DUP,WORK(TCB)	;Indicate pkt not a duplicate
+;
+; Now initialize the receive sequence numbers.
+;
+	MOV	TH.SEQ(HDR),INISEQ(TCB)	;Remember initial syn sequence number
+	MOV	TH.SEQ+2(HDR),INISEQ+2(TCB)
+	MOV	TH.SEQ(HDR),RCVSEQ(TCB)	;Initialize receive left window edge
+	MOV	TH.SEQ+2(HDR),RCVSEQ+2(TCB)
+	CLR	RCVUP(TCB)		;Reset receive urgent pointer
+	ADD	#1,RCVSEQ+2(TCB)	;Advance receive left window edge
+	ADC	RCVSEQ(TCB)
+;
+; Search the options field to see if a buffer size option was specified
+;
+	CLR	RCVBS(TCB)		;Clear receive buffer size
+	MOV	#105,R0			;Look for buffer size option
+	CALL	SCNOPN			;Scan for the option
+	BNE	3$			;If not found, skip
+;
+; Buffer size option found, extract it and store into the TCB. If the buffer
+; size is 1 (the default), set RCVBS to 0, indicating the default buffer 
+; size.
+;
+	MOVB	(R1)+,RCVBS+1(TCB)	;Get buffer size from option
+	MOVB	(R1)+,RCVBS(TCB)
+	CMP	RCVBS(TCB),#1		;Buffer size = 1?
+	BNE	3$			;If not, skip
+	CLR	RCVBS(TCB)		;Else set to default
+
+3$:	BIS	#FL.ACK,WORK(TCB)	;Set 'need to send ack' flag 
+	BIT	#ST.SS,STATE(TCB)	;Have we sent out a SYN?
+	BNE	4$			;If so, don't send another one
+	BIS	#ST.SS,STATE(TCB)	;Otherwise, reply with a SYN
+	BIS	#FL.SYN,WORK(TCB)
+4$:	CLR	R0			;Indicate good packet
+	RET
+
+
+5$:	CALL	SNDRST			;Send a RESET for non-existant 
+					;   connection
+	BR	7$			;and take error exit
+
+6$:	$LOG	NR.USN			;Count number of 'unacceptable syns' 
+	BIS	#FL.ACK,WORK(TCB)	;Force out an ack packet to probe
+7$:	MOV	#ER.SYN,R0		;Indicate inavlid SYN
+	RET
+
+	.SBTTL	.	RCVACK - Process received acknowledgements
+
+;
+; RCVACK is called to process the acknowledgement field in a packet.  It
+; first subtracts the send Left Window Edge (LWESEQ) (the sequence number of 
+; the first octet waiting to be ACKed) from the ACK sequence number in the 
+; packet.  If the difference is very large positively or negatively, the ACK
+; is invalid and a RST should be returned.  If the difference is negative, 
+; the packet does not ACK anything new.  Only if the difference is positive 
+; is processing required.
+;
+; Returns with:	R1 - scratch
+;		R0 - Return code
+;			Z = 1, If ACK OK
+;			Z = 0, If bad ack
+;
+
+RCVACK: MOV	SNDSEQ(TCB),R0		; R0-R1 -- Send sequence number
+	MOV	SNDSEQ+2(TCB),R1
+	SUB	TH.ACK+2(HDR),R1	;Calculate # bytes not ACKed
+	SBC	R0
+	SUB	TH.ACK(HDR),R0
+	BNE	4$			;If ACKed what wasn't sent, error
+	MOV	TH.ACK(HDR),R0		; R0-R1 -- ACK sequence number
+	MOV	TH.ACK+2(HDR),R1	; R0 - MSB, R1 - LSB
+	SUB	LWESEQ+2(TCB),R1	;calculate # of bytes ACKED
+	BEQ	3$			;If LSB = 0, not acking anything new
+	SBC	R0
+	SUB	LWESEQ(TCB),R0
+	BNE	3$			;If a large difference, ignore ACK
+;
+; R1 - number of bytes acknowledged
+;
+	SUB	R1,SNDWS(TCB)		;Calculate send permission past LWE
+	ADD	R1,LWESEQ+2(TCB)	;Advance send left window edge
+	ADC	LWESEQ(TCB)		; by number of bytes ACKed
+;	SUB	R1,SNDCNT(TCB)		;and reduce # of bytes outstanding
+	SUB	R1,SNDUP(TCB)		;Adjust send urgent pointer
+	BCC	1$			;If still valid, skip
+	CLR	SNDUP(TCB)		;If underflowed, clear urgent ptr
+1$:	CLRB	RETRY(TCB)		;Since new ack, clear retry counter
+	.IF NE,	RTXBKO
+	MOVB	#RTXTMO,RTXDLY(TCB)	;Reset rtx interval to base
+	.ENDC
+;
+; First check if a SYN is awaiting ACKnowledgement
+;
+	BIT	#RX.SYN,RTXFLG(TCB)	;SYN waiting to be ACKed
+	BEQ	2$			;If not, skip
+;
+;   Our SYN has been ACKed.  Set the SYN/ACKed flag and check if connection
+; established.
+;
+	BIC	#RX.SYN,RTXFLG(TCB)	;Clear SYN retransmission flag
+	BIS	#ST.SA!ST.RCV!ST.SND,STATE(TCB)	;Indicate connection usable 
+	MOV	#SG.EST,R0
+	CALL	NOTIFY			;Notify user of connection established
+	DEC	R1			;Account for SYN octet ACKed
+
+;
+; Call the user interface module to handle acking of user data.  On call,
+; R1 contains the number of bytes ACKed and on return, R1 is updated.
+;
+2$:	CALL	USRACK			;Handle acking of user data
+
+;
+; After handling any user data, see if this might ACK our FIN
+;
+	TST	R1			;Ack anything besides data
+	BEQ	3$			;If not, skip
+	BIT	#RX.FIN,RTXFLG(TCB)	;FIN waiting to be ACKed
+	BEQ	4$			;If not, ACKed something not sent!!!
+	CMP	TH.ACK(HDR),SNDSEQ(TCB)	;See if ACKing FIN
+	BNE	4$			;If not equal, error
+	CMP	TH.ACK+2(HDR),SNDSEQ+2(TCB)
+	BNE	4$
+;
+; Our FIN has been acked.  Set the FIN/ACKed flag and see if the connection
+; is ready to be closed.
+;
+	BIC	#RX.FIN,RTXFLG(TCB)	;Clear FIN retransmission flag
+	BIS	#ST.FA,STATE(TCB)	;Indicate our FIN acked
+	BIT	#ST.FR,STATE(TCB)	;FIN also received?
+	BEQ	3$			;If not, skip
+	BIS	#FL.DEL,WORK(TCB)	;Else, mark connection for deletion
+3$:	CLR	R0			;Indicate ACK ok
+	RET
+
+
+;
+; An ACK for data that hasn't been sent was received.
+;
+4$:	MOV	#ER.ACK,R0		;Indicate error
+	RET
+
+	.SBTTL	.	RCVWDW - Update send window if necessary
+
+;
+; RCVWDW checks if permission to send more data has been given.  If TH.WDW
+; is greater than the number of bytes remaining in the send window
+; (SNDWS), then update SNDWS from TH.WDW. This implements a ratchet on 
+; the transmission permission.
+;
+RCVWDW:	CMP	TH.WDW(HDR),SNDWS(TCB)	;Compare window in Pkt with SNDWS
+	BLO	1$			;If less than, don't update
+	MOV	TH.WDW(HDR),SNDWS(TCB)	;Update send window
+1$:	RET
+
+	.SBTTL	.	RCVURG - Process URGENT pointer
+
+;
+; RCVURG is called if an Urgent pointer offset was specified in the packet.
+; First it calculates the Urgent pointer's sequence number, then subtracts
+; the RCVSEQ, and if the result is positive (indicating un-ACKed urgent data)
+; it goes into receive urgent mode.  If we are not now in receive urgent 
+; mode, it notifies the user of the transistion.  
+;
+
+RCVURG:	MOV	TH.SEQ(HDR),R0		;Get packet sequence number
+	MOV	TH.SEQ+2(HDR),R1
+	ADD	TH.URG(HDR),R1		;Calculate urgent pointer seq number
+	ADC	R0
+	SUB	RCVSEQ+2(TCB),R1	;Subtract receive left window edge
+	SBC	R0
+	SUB	RCVSEQ(TCB),R0
+	BNE	2$			;If not in window, ignore
+	CMP	R1,RCVUP(TCB)		;Larger than current pointer?
+	BLO	2$			;If not, don't backup urgent ptr
+	TST	RCVUP(TCB)		;Currently in receive urgent mode?
+	BNE	1$			;If so, already signalled user
+	MOV	#SG.URG,R0
+	CALL	NOTIFY			;Signal user of urgent data
+1$:	MOV	R1,RCVUP(TCB)		;Save new receive urgent pointer
+2$:	RET
+
+	.SBTTL	.	RCVTXT - Process text of packet
+
+;
+; RCVTXT is called to handle text in a packet by calling the user interface 
+; routine USRRCV to actually process the received data. 
+;
+; Called with:	TCB - pointer to TCB
+;		HDR - pointer to pseudo header
+;
+
+RCVTXT:	CALL	USRRCV			;Handle the received text with
+	RET
+
+	.SBTTL	.	RCVFIN - Handle received 'FIN' control
+
+RCVFIN:	$LOG	R.FIN			;Count number of fin's received
+	MOV	TH.SEQ(HDR),FINSEQ(TCB)	;Remember sequence number of FIN
+	MOV	TH.SEQ+2(HDR),FINSEQ+2(TCB)
+	ADD	PH.DL(HDR),FINSEQ+2(TCB)	;Account for text in packet
+	ADC	FINSEQ(TCB)
+	BITB	#TC.SYN,TH.CTL(HDR)	;SYN also in packet?
+	BEQ	1$			;If not, skip
+	ADD	#1,FINSEQ+2(TCB)	;Account for SYN in sequence number
+	ADC	FINSEQ(TCB)
+1$:	BIS	#ST.FW,STATE(TCB)	;Mark FIN pending on receive side
+	CALL	HNDFIN			;and handle awaiting FIN
+	RET
+	
+
+	.SBTTL	.	HNDFIN - Handle awaiting FIN
+
+;
+; HNDFIN is called to process the FIN that is waiting on the receive
+; side of the connection.  It first checks to see if the current 
+; receive sequence number is the same as the FIN's sequence number.
+; If it is, the FIN can now be processed.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+HNDFIN:	CMP	RCVSEQ+2(TCB),FINSEQ+2(TCB)	;Sequence numbers match?
+	BNE	2$			;If not, skip
+	CMP	RCVSEQ(TCB),FINSEQ(TCB)
+	BNE	2$
+;
+; The FIN has reached the receive left window edge and can now be 
+; processed
+;
+	ADD	#1,RCVSEQ+2(TCB)	;Advance receive window edge past FIN
+	ADC	RCVSEQ(TCB)
+	BIS	#ST.FR,STATE(TCB)	;Indicate FIN received
+	BIS	#FL.ACK,WORK(TCB)	; and force an ACK for it
+	BIT	#ST.FS,STATE(TCB)	;Have we already sent a FIN?
+	BNE	1$			;If so, don't do again
+	MOV	#SG.RC,R0
+	CALL	NOTIFY			;Notify user of remote close
+	BIS	#FL.FIN,WORK(TCB)	;Send a FIN packet
+	BIS	#ST.FS,STATE(TCB)	;  and note the fact
+	BIC	#ST.SND,STATE(TCB)	;Can't send more data over connection
+	BR	2$
+
+1$:	BIT	#ST.FA,STATE(TCB)	;Has our FIN been ACKed?
+	BEQ	2$			;If not, wait for ACK
+	BIS	#FL.DEL,WORK(TCB)	;Else, mark connection for deletion
+2$:	RET
+
+	.SBTTL
+	.SBTTL	Output packet processing routines
+	.SBTTL	.	SNDPND - Send any pending packets
+
+;
+; SNDPND is called by most of the main entry point routines.  Its function
+; is to examine the work flags and attempt to perform whatever work is 
+; needed.  By being called whenever any other TCP protocol routine is
+; called, we can be assure that SNDPND will be able to perfrm its duties as
+; soon as conditions allow.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+SNDPND:	TST	WORK(TCB)		;Any work to do
+	BEQ	11$			;If none, exit
+	BIT	#FL.SYN,WORK(TCB)	;Need to send a SYN packet?
+	BEQ	2$			;If not, skip
+	CALL	SNDSYN			;Else send it
+	BR	11$			;and exit
+
+2$:	BIT	#FL.TXT,WORK(TCB)	;Need to send some text
+	BEQ	3$			;If not, skip
+	CALL	SNDTXT			;Else send it
+	BR	11$
+
+3$:	BIT	#FL.FIN,WORK(TCB)	;Need to send a FIN
+	BEQ	4$			;If not, skip
+	CALL	SNDFIN			;Else send it
+	BR	11$			;and exit
+
+4$:	BIT	#FL.ACK,WORK(TCB)	;Need to send an ACK
+	BEQ	5$			;If not, skip
+	CALL	SNDACK			;Else, send it
+
+5$:	BIT	#FL.DEL,WORK(TCB)	;Need to delete TCB
+	BEQ	11$			;If not, skip
+	CALL	DELTCB			;Else, delete it
+
+11$:	RET
+
+	.SBTTL	.	SNDRST - Send reset error packet
+
+;
+; SNDRST is called from the received packet processing routine when it is
+; necessay to send a RST error message.  First, an output packet buffer is
+; allocated for the RST packet.  If one cannot be obtained, we ignore the
+; request.  Then the address and sequence number fields are copied into the
+; output packet which is then transmitted.
+;
+; Called with:	TCB - Pointer to active TCB
+;		HDR - Pointer to received packet in error
+;
+
+SNDRST:	$PUSH	R1,HDR			;Save received packet pointer
+	MOV	HDR,R1			;R1 = Received packet in error
+	CALL	INIPKT			;Allocate/initialize a packet buffer
+					;  HDR <-- pointer to TCP header
+	BNE	1$			;If can't get packet buffer, exit
+	$LOG	NS.RST			;Count number of RESET packets sent
+	MOV	PH.SRC(R1),PH.DST(HDR)	;Pkt's source is error's destination
+	MOV	PH.SRC+2(R1),PH.DST+2(HDR)
+	MOV	PH.DST(R1),PH.SRC(HDR)
+	MOV	PH.DST+2(R1),PH.SRC+2(HDR)
+	MOV	TH.DP(R1),TH.SP(HDR)	;Exchange port IDs also
+	MOV	TH.SP(R1),TH.DP(HDR)
+	MOV	TH.SEQ(R1),TH.ACK(HDR)	;ACK field identifies packet that 
+	MOV	TH.SEQ+2(R1),TH.ACK+2(HDR)	; caused the error to be sent
+	MOV	TH.ACK(R1),TH.SEQ(HDR)	;Pick a good sequence number
+	MOV	TH.ACK+2(R1),TH.SEQ+2(HDR)
+	MOVB	#TC.RST!TC.ACK,TH.CTL(HDR)	;Set RST & ACK control flags
+	CALL	XMTPKT			;Transmit packet
+1$:	$POP	HDR,R1
+	RET
+
+	.SBTTL	.	SNDSYN - Send a SYN packet
+
+;
+; SNDSYN is called to transmit a SYN packet. If the attempt fails
+; (because of lack of packet buffers or excessive sends outstanding, for
+; example), the SYN will be retransmitted after the time-out interval.
+; If is assumed that all of the connection state information, such as 
+; LWESEQ, SNDSEQ, etc. have been initialized.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+SNDSYN:	BIS	#ST.SS,STATE(TCB)	;Indicate a SYN has been sent
+	BIS	#RX.SYN,RTXFLG(TCB)	;and is awaiting an ACK
+	MOV	#TC.SYN,R1		;Set function to SYN packet
+	CALL	XMTCTL			;Transmit a SYN control packet
+	BNE	1$			;If couldn't skip
+	BIC	#FL.SYN,WORK(TCB)	;Indicate SYN sent
+	ADD	#1,SNDSEQ+2(TCB)	; and advance send sequence number
+	ADC	SNDSEQ(TCB)
+1$:	RET
+
+	.SBTTL	.	SNDFIN - Construct and send a FIN packet
+
+;
+; SNDFIN is called to send out a FIN packet.  It sets the FIN-SENT flag and
+; constructs the necessary packet.  If the packet can't be sent, the FIN
+; will be retransmitted later.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+SNDFIN:	BIS	#ST.FS,STATE(TCB)	;Indicate a FIN has been sent
+	BIS	#RX.FIN,RTXFLG(TCB)	;Indicate FIN awaiting acking
+	MOV	#TC.FIN,R1		;Indicate a FIN packet
+	CALL	XMTCTL			;Transmit a FIN control packet
+	BNE	1$			;If unsuccesful, try later
+	BIC	#FL.FIN,WORK(TCB)	;Indicate FIN sent
+	ADD	#1,SNDSEQ+2(TCB)	; and advance send sequence number
+	ADC	SNDSEQ(TCB)
+1$:	RET
+
+
+
+XMTCTL:	CALL	INIPKT			;Allocate/initialize a packet
+	BNE	1$			;If can't, exit
+	BISB	R1,TH.CTL(HDR)		;Merge in control flags
+	CALL	XMTPKT			;and transmit the packet
+	CLR	R0
+1$:	RET				;Indicate failure
+
+	.SBTTL	.	SNDTXT - SEND USER DATA
+
+;
+; SNDTXT is called by the main process in response to a signal indicating
+; that the user has done another send.  It in turn calls the user interface
+; routine USRSND to actually construct the packet.
+;
+
+SNDTXT:	CALL	USRSND			;Call user send routine
+	RET
+
+
+	.SBTTL	.	RTXCON - Retransmit unacknowledged control/data
+
+;
+; RTXCON is called to retransmit unacknowledged control or data. 
+;
+; Called with:	TCB - pointer to TCB
+;
+
+RTXCON:	DECB	WAKEUP(TCB)		;Decrement retransmission counter
+	BNE	4$			;If not zero yet, skip
+;
+; The retransmission timer has expired, reinitialize the counter and see if
+; there is anything to retransmit.
+;
+	MOVB	RTXDLY(TCB),WAKEUP(TCB)	;Reset timer wakeup down counter
+	TST	RTXFLG(TCB)		;Anything queued to be retransmitted?
+	BEQ	4$			;If not, skip
+;
+; Now increment the retransmission counter, compare it to the maximum allowed
+; to see if the head of the queue has been sent too many times.  This counter
+; is zeroed when a new acknowledgement is processed on the input side.  If
+; the counter reaches the maximum allowed, the foreign TCP is not responding.
+;
+	INCB	RETRY(TCB)		;Bump retransmission try counter
+	.IF NE,	RTXBKO			;If back-off wanted
+	CLR	R0
+	BISB	RTXDLY(TCB),R0		;Get previous rtx interval
+	.IF EQ,	RTXBKO-1		;If linear back-off
+	ADD	#RTXTMO,R0		;Add in base interval
+	.IFF
+	.IF EQ, RTXBKO-2		;If exponential back-off
+	ASL	R0			;Double previous interval to get next
+	.ENDC
+	.ENDC
+	CMP	R0,#RTXMAX		;Reached limit yet?
+	BLOS	1$			;If not, skip
+	MOV	#RTXMAX,R0		;Else trim back to max
+1$:	MOVB	R0,RTXDLY(TCB)		;And set delay for next go around
+	.ENDC
+	CMPB	RETRY(TCB),MRETRY(TCB)	;Tried to send it maximum allowed?
+	BHI	5$			;If so, handle excessive rtxs
+;
+; After checking the number of retransmisions, check to see if a SYN needs 
+; to be retransmitted.
+;
+	BIT	#RX.SYN,RTXFLG(TCB)	;Need to rtx a SYN?
+	BEQ	2$			;If not, skip
+	MOV	#TC.SYN,R1		;Set control function to SYN
+	CALL	RTXPKT			;... construct a retransmission pkt
+	BR	4$			;and exit
+
+;
+; Next check to see if any user data needs retransmission
+;
+2$:	BIT	#RX.TXT,RTXFLG(TCB)	;Need to rtx any user data?
+	BEQ	3$			;If not, skip
+	CALL	USRRTX			;If so, do it
+	BR	4$
+;
+; Check to see if a FIN needs to be retransmitted.
+;
+3$:	BIT	#RX.FIN,RTXFLG(TCB)	;Need to rtx a FIN?
+	BEQ	4$			;If not, skip
+	MOV	#TC.FIN,R1		;Set control function to FIN
+	CALL	RTXPKT			;and retransmit the FIN
+;
+;  After handling any retransmissions, see if any other packets can be 
+; sent and then exit
+;
+4$:	CALL	SNDPND
+	RET
+
+;
+; If the head of the retransmission queue has been retransmitted the maximum
+; number of times without getting an ACK, notify the user process and set 
+; the connection suspended state flag.  
+;
+5$:	BIT	#ST.SPN,STATE(TCB)	;Connection already suspended?
+	BNE	6$			;If so, don't signal user process
+	BIS	#ST.SPN,STATE(TCB)	;Indicate connection suspended
+	MOV	#SG.DD,R0
+	CALL	NOTIFY			;Notify user of "TCP not responding"
+6$:	CLRB	RETRY(TCB)		;Clear out retry counter
+;
+; If the connection gets suspended during the synchronization or closing
+; handshake sequences, then automatically close the connection.
+;
+	BIT	#ST.RCV!ST.SND,STATE(TCB)	;Check if connection usable
+	BNE	4$			;If so, then don't abort on time-out
+	JSR	PC,ABTCON		;Else, flush the connection
+	BR	4$			;And then exit
+
+
+	.SBTTL	.	SNDACK - Force an ack only packet
+
+;
+; NEED TO FORCE OUT AN ACK ONLY PACKET WHEN THERE IS NO REVERSE TRAFFIC
+;   JUST INITIALIZE A PACKET BUFFER, ACK INCLUDED, AND SEND IT
+;
+
+SNDACK:	CALL	INIPKT			;Initialize packet buffer
+	BNE	1$			;If can't skip
+	$LOG	NS.ACK			;Count number of ack only pkts sent
+	CALL	XMTPKT			;and send packet w/o advancing sndseq
+1$:	RET
+
+	.SBTTL	.	RTXPKT - Retransmit packet
+
+;
+; RTXPKT is called by the retransmission handler 
+;
+
+
+RTXPKT:	CALL	INIPKT			;Initialize packet buffer
+	BNE	1$			;If can't error
+	MOV	LWESEQ(TCB),TH.SEQ(HDR)	;Set sequence number for 
+	MOV	LWESEQ+2(TCB),TH.SEQ+2(HDR)	;  retransmission 
+	BISB	R1,TH.CTL(HDR)		;Set control flag
+	CALL	XMTPKT			;Send the packet
+1$:	RET
+
+	.SBTTL	.	XMTPKT - Transmit packet
+
+;
+; XMTPKT is called by the protocol routines to transmit a packet that has
+; been constructed.
+;
+; Called with:	TCB - Pointer to active TCB
+;		HDR - pointer to TCP header
+;
+
+XMTPKT:	TST	SNDUP(TCB)		;Need to send urgent information?
+	BEQ	1$			;If not, skip
+	MOV	LWESEQ+2(TCB),R1	;Get left window seq number
+	MOV	LWESEQ(TCB),R0
+	ADD	SNDUP(TCB),R1		;Calculate urgent sequence number
+	ADC	R0
+	SUB	TH.SEQ+2(HDR),R1	;Subtract sequence number of packet
+	BLE	1$
+	SBC	R0
+	SUB	TH.SEQ(HDR),R0		;Getting urgent pointer offset
+	BNE	1$			;If not zero, ignore URGENT pointer
+	MOV	R1,TH.URG(HDR)		;Else, set URGENT pointer
+	BISB	#TC.URG,TH.CTL(HDR)	; and URG flag bit
+1$:	CLR	R0
+	BISB	TH.HLN(HDR),R0		;Get header length
+	BIC	#^C360,R0
+	ASR	R0
+	ASR	R0			;and convert to bytes
+	ADD	R0,PH.DL(HDR)		;add to text length
+	JSR	PC,SWPBYT		;Swap bytes in packet word fields
+	CLR	TH.CHK(HDR)		;Zero out checksum field
+	CALL	CHKSUM			;Calculate the packet checksum
+					;R0= Complement of 1's complement sum
+	MOV	R0,TH.CHK(HDR)		;Insert into packet header
+	CALL	OUTPKT			;and output packet
+	RET
+
+	.SBTTL
+	.SBTTL	TCB Utility routines
+	.SBTTL	.	FNDTCB - Find TCB which matches incoming packet
+
+;
+; FNDTCB is called to find the TCB which matches the received packet.  This 
+; routine searches the TCB queue looking for the 1) first unspecified TCB 
+; that matchs the incoming packet and 2) fisrt specified TCB that matches 
+; the packet.  If the specified TCB is found, its address is returned. 
+; Otherwise, the address of the unspecified TCB is returned.  If no TCB can 
+; be found, an error indication is returned.
+;
+; Called with:	HDR - Pointer to start of TCP header
+;
+; Returns with:	TCB - Pointer to TCB
+;		R0  - Return code
+;			Z=1, If TCB found
+;			Z=0, If error, no TCB
+;
+
+FNDTCB:	$PUSH	R1
+	MOV	#$TCBQ,TCB		;Get addr of TCB queue
+	CLR	R1			;and initialize unspec TCB ptr to nul
+	BR	3$			;  and start search
+;
+; Check to see if the candidate TCB matches the packet.  The order of search
+; is:
+;	1) Destination port = local port
+;	2) Source port = foreign port
+;	3) Source TCP = foreign TCP
+;	4) Source NET = foreign NET
+;	5) Destination TCP = local TCP
+;	6) Destination NET = local NET
+;
+1$:	CMP	TH.DP(HDR),LPORT(TCB)	;Destination = local port?
+	BNE	3$			;if not, check next TCB
+	BIT	#ST.WLD,STATE(TCB)	;Wild-card foreign address match?
+	BNE	2$			;If so, skip foreign addr check
+	CMP	TH.SP(HDR),FPORT(TCB)	;Source = foreign port?
+	BNE	3$			;if not, check next TCB
+	CMP	PH.SRC+2(HDR),FADDR+2(TCB)	;Check foreign addr
+	BNE	3$
+	CMP	PH.SRC(HDR),FADDR(TCB)
+	BNE	3$
+2$:	CMP	PH.DST+2(HDR),LADDR+2(TCB)	;and check local address
+	BNE	3$
+	CMP	PH.DST(HDR),LADDR(TCB)
+	BNE	3$
+;
+; The packet matches the address specifications for this TCB.  If the
+; TCB addresses are fully-specified, we have found our TCB.  If not, see
+; if another unspecified TCB has been matched, and if not, remember this
+; unspecified TCB's address
+;
+	BIT	#ST.WLD,STATE(TCB)	;Fully specified TCB?
+	BEQ	5$			;If so, found our TCB
+	TST	R1			;Have we already found an unspec TCB?
+	BNE	3$			;If so, skip
+	MOV	TCB,R1			;Remember addr of 1st unspec TCB
+
+3$:	MOV	(TCB),TCB		;Get link to next TCB
+	BNE	1$			;If non-null, check it
+	MOV	R1,TCB			;Get addr of unspec TCB
+	BNE	4$			;If one found, skip
+	MOV	#NULTCB,TCB		;Return ptr to null TCB for RSTs
+	$POP	R1
+	MOV	#ER.NOX,R0		;Indicate no TCB found error
+	RET				;and return
+
+4$:	MOV	TH.SP(HDR),FPORT(TCB)	;Fill in foreign addr info
+	MOV	PH.SRC(HDR),FADDR(TCB)	;  into the TCB
+	MOV	PH.SRC+2(HDR),FADDR+2(TCB)
+
+5$:	$POP	R1
+	CLR	R0			;Indicate no error
+	RET				;and return
+
+	.SBTTL	.	DELTCB - Perform final connection clean-up
+
+;
+; DELTCB - Perform final connection clean-up
+;
+; Called with:	TCB - pointer to TCB
+;
+
+DELTCB:	$PUSH	R0,R1
+	BIT	#FL.SYN!FL.FIN!FL.TXT!FL.ACK,WORK(TCB)	;Work pending?
+	BNE	1$			;If so, can't delete yet
+	TST	USECNT(TCB)		;In use by anyone?
+	BNE	1$			;If so, can't flush TCB
+	MOV	#SG.CC,R0
+	CALL	NOTIFY			;Notify user of close complete
+	MOV	#$TCBQ,R0		;Get pointer to TCB list
+	MOV	TCB,R1
+	CALL	DELQ			;Delete TCB from queue
+	CALL	FRETCB			;and release TCB storage
+	BIC	#FL.DEL,WORK(TCB)	;Indicate TCB deleted
+1$:	$POP	R1,R0
+	RET
+
+	.SBTTL	.	RSTTCB - Reset TCB state
+
+;
+; RSTTCB resets the TCB back to a known state.  It is called by the protocol
+; handler before opening a connection for the first time and after receiving
+; a RESET for an incompletely opened connection.  After resetting the TCB, 
+; RSTTCB initiates sending a SYN packet if the connection is fully specified
+; and is not in the listening mode.
+;
+; Called with:	TCB - Address of active tcb
+;
+; Returns with:	R5 thru R0 - unchanged
+;
+
+RSTTCB:	$PUSH	R0,R1
+	BIC	#^C<ST.USP!ST.LSN>,STATE(TCB)	;Only unspecified addr flag 
+					; and listening flag valid
+	CALL	USRRST			;Flush/reset user interface's 
+					;   retransmission/reassembly buffer
+	CLR	RTXFLG(TCB)		;Reset RTX flags
+	CLRB	RETRY(TCB)		;Reset send try counter
+	MOVB	RTXDLY(TCB),WAKEUP(TCB)	;  and init rtx timer
+	MOV	#MAXRWS,RCVWS(TCB)	;Reset receive window allowed
+	CLR	SNDWS(TCB)		;and close send window
+	MOV	SNDSEQ(TCB),LWESEQ(TCB)	;Reset send left window edge
+	MOV	SNDSEQ+2(TCB),LWESEQ+2(TCB)
+	BIT	#ST.USP,STATE(TCB)	;Unspecified foreign address?
+	BEQ	1$			;If not, skip
+	BIS	#ST.WLD,STATE(TCB)	;Else, set wild-card addr match flag
+1$:	BIT	#ST.USP!ST.LSN,STATE(TCB)	;Unspecfied or listening?
+	BNE	2$			;If so, don't send a SYN out
+	CALL	SNDSYN			;Send out a SYN
+2$:	$POP	R1,R0
+	RET
+
+	.SBTTL	.	ABTCON - Abort connection
+;
+; ABTCON - Aborts the connection 
+;
+; Called with:	TCB - address of active tcb
+;
+
+ABTCON:	CLR	STATE(TCB)		;Set connection state to closed
+	CLR	WORK(TCB)		;and flush any pending work
+	CALL	USRABT			;Abort any sends in progress
+	BIS	#FL.DEL,WORK(TCB)	;Mark TCB for deletion
+	RET
+
+	.SBTTL
+	.SBTTL	Packet utility routines
+	.SBTTL	.	CHKSUM - 1's complement checksum routine
+
+;
+; CHKSUM is called to compute the 1's complement 16 bit sum of the words in 
+; the TCP packet.  If called with a zero in the checksum field, it will 
+; return the value that should be there.  If called with the checksum 
+; in the packet, it will return zero if the checksum is verified.
+;
+; Called with:	HDR - Pointer to TCP header
+;
+; Returns with:	R0 - 1's complement 16 bit sum
+;
+
+CHKSUM:	$PUSH	R1,R2,R3
+
+;
+; R0 - 1's complement sum accumulator
+; R1 - odd/even byte count flag
+; R2 - number of words to checksum
+; R3 - roving pointer into packet
+;
+	MOV	PH.DL(HDR),R2		;Get length of TCP part
+	SWAB	R2			;account for byte swapping
+	ADD	#PH.LEN,R2		;Add in length of pseudo header
+	MOV	HDR,R3
+	CLR	R1
+	ASR	R2			;Convert byte to word cont
+	ADC	R1			;Set R1 if extra trailing odd byte
+	CLR	R0
+1$:	ADD	(R3)+,R0		;Add into checksum
+	ADC	R0
+	$LOOP	R2,1$			;And process all of them
+	TST	R1			;Extra trailing byte?
+	BEQ	2$			;If not, exit
+	CLR	R1
+	BISB	(R3)+,R1		;Get that extra byte
+	ADD	R1,R0			;And include in the checksum
+	ADC	R0
+;
+; Now for the final complementing
+;
+2$:	TST	R0			;If sum is zero do not complement
+	BEQ	3$
+	COM	R0
+3$:	$POP	R3,R2,R1
+	RET
+
+	.SBTTL	.	SWPBYT - Swap bytes in packet word fields
+
+;
+; SWPBYT is called to convert the received packet into internal format. 
+; For the TIU interface, that requires swapping the bytes in the word
+; fields of the packet to correct for the addressing problem associated 
+; with a byte-oriented network interface.
+;
+; Called with:	HDR - pointer to TCP header
+;
+
+SWPBYT:	SWAB	PH.DL(HDR)		;Swap segment length
+	SWAB	TH.SEQ(HDR)		;... packet sequence number
+	SWAB	TH.SEQ+2(HDR)
+	SWAB	TH.ACK(HDR)		;... acknowledgement sequence number
+	SWAB	TH.ACK+2(HDR)
+	SWAB	TH.WDW(HDR)		;... send window
+	SWAB	TH.URG(HDR)		;... urgent pointer
+	RET
+
+	.SBTTL	.	INIPKT - Initialize output packet header
+
+;
+; INIPKT - Allocate and initialize output packet header
+;
+; Called with:	TCB - pointer to the TCB
+;
+; Returns with:	HDR - Pointer to TCP header
+;		R0  - Return code
+;			Z=1, If packet allocated
+;			Z=0, If on error
+;
+
+INIPKT:	$PUSH	R1
+	CALL	GETPKT			;Allocate a packet buffer
+	BNE	2$			;If can't, exit
+	MOV	HDR,R1			;Get pointer to pseudo-header
+	MOV	LADDR(TCB),(R1)+	;Set source address
+	MOV	LADDR+2(TCB),(R1)+
+	MOV	FADDR(TCB),(R1)+	;Set destination address
+	MOV	FADDR+2(TCB),(R1)+
+	CLRB	(R1)+			;Clear unused byte
+	MOVB	#TCPPRO,(R1)+		;Set protocol number
+	CLR	(R1)+			;  and amount of text in packet
+	MOV	LPORT(TCB),(R1)+	;Insert source port ID
+	MOV	FPORT(TCB),(R1)+	;... destination port ID
+	MOV	SNDSEQ(TCB),(R1)+	;... Send sequence number
+	MOV	SNDSEQ+2(TCB),(R1)+
+	MOV	RCVSEQ(TCB),(R1)+	;... Receive left window edge as
+	MOV	RCVSEQ+2(TCB),(R1)+	;    acknowledgement
+	MOVB	#<<TH.LEN-PH.LEN>/4>*20,(R1)+	;Insert TCP header length
+	CLRB	(R1)+			;Reset control bits
+	MOV	RCVWS(TCB),(R1)+	;Insert current receive window size
+	CLR	(R1)+			;Reset checksum field
+	BIC	#FL.ACK,WORK(TCB)	;Clear Send-ack flag
+	BIT	#ST.SR,STATE(TCB)	;Have we received a SYN?
+	BEQ	1$			;If not, can't send an ACK
+	BISB	#TC.ACK,TH.CTL(HDR)	;Set ACK bit, ACK field is ready
+1$:	CLR	R0			;Indicate packet initialized ok
+2$:	$POP	R1
+	TST	R0
+	RET
+
+	.SBTTL	.	SCNOPN - Scan for specified option
+
+;
+; SCNOPN - Scan TCP header for specified option
+;
+; Called with:	HDR - pointer to the TCP header
+;		R0 -  Option kind to scan for
+;
+; Returns with:	R1 - Pointer to start of the option data field
+;		R0 - Return code
+;			Z=1, If option found
+;			Z=0, If option not found
+;
+
+SCNOPN:	$PUSH	R2,R3
+	MOV	HDR,R1			;Init pointer to start of header
+	ADD	#TH.LEN,R1		;Advance pointer to start of options
+	MOVB	TH.HLN(HDR),R3		;Get header length
+	BIC	#^C360,R3		;  and clear extra bits
+	ASR	R3			;Convert to byte offset
+	ASR	R3
+	SUB	#TH.LEN-PH.LEN,R3	;Subtract fix TCP header size
+	BEQ	6$			;If no options, can't be found
+1$:	MOVB	(R1)+,R2		;Get option type
+	BEQ	6$			;End-of-options flag, take error rtn
+	CMPB	R2,#1			;Padding option?
+	BNE	2$			;If not, skip
+	DEC	R3			;decrement option area size counter
+	BR	3$			;and check of end of options
+	
+2$:	CMPB	R0,R2			;Option matches
+	BEQ	4$			;If so, found it
+	
+	CLR	R2	
+	BISB	(R1)+,R2		;Get option length
+	SUB	R2,R3			;Sub lngth from optn bytes remaining
+3$:	BMI	7$			;If over-run, take error return
+	BEQ	6$			;If only padding, try again
+	ADD	R2,R1			;Advance packet pointer
+	BR	1$			;And try next option
+
+4$:	TSTB	(R1)+			;Advance to option data
+	CLR	R0			;Indicate option found
+5$:	$POP	R3,R2
+	TST	R0
+	RET
+
+6$:	MOV	#ER.OPT,R0		;Option not found error
+	BR	5$			;and exit
+
+7$:	MOV	#ER.OPF,R0		;Option format error
+	BR	5$
+
+	.SBTTL
+	.SBTTL	Queue Handling Utility Routines
+	.SBTTL	.	INIQ - Initialize a Q-descriptor
+
+;
+; Queues in the TCP program have two components: the Q-descriptor and
+; the individual elements of the Q.  The Q descriptor contains a head
+; pointer, which points to the first element in the queue, and a tail
+; pointer, which points to the last element in the queue.  In the empty
+; state, the Q head pointer is zero, and the tail pointer points to the
+; head.
+;
+; Queue elements are doubly-linked to allow easy deletion from the middle
+; of the list.  The first word of the Q element is the forward link and
+; points to the next element in the list or contains zero if this was the
+; last element.  The second word is the backwards pointer and points to the
+; previous element in the list.  In the case that this was the first element
+; in the list, it points to the queue descriptor.
+;
+;
+; Called with:	R0 - Pointer to Q-descriptor
+;
+
+INIQ:	CLR	(R0)			;Clear Q-head--Q now empty
+	MOV	R0,2(R0)		;and point tail towards head
+	RET
+
+	.SBTTL	.	ADDQ - Place an element on a queue
+
+;
+; Called with:	R0 - Pointer to Q-descriptor
+;		R1 - Pointer to element to be put at tail of queue
+;
+
+ADDQ:	CLR	(R1)			;Clear next link
+	MOV	R1,@2(R0)		;Link new element to old tail
+	MOV	2(R0),2(R1)		;Point back towards previous element
+	MOV	R1,2(R0)		;  and update tail pointer
+	RET
+
+	.SBTTL	.	DELQ - Delete an element from a queue
+;
+; Called with:	R0 - Pointer to Q-descriptor
+;		R1 - Pointer to element to be deleted
+;
+
+DELQ:	$PUSH	R0
+	MOV	(R1),@2(R1)		;Move forward link to previous entry
+	BEQ	1$			;If at tail, skip
+	MOV	(R1),R0			;Get ptr to next element
+1$:	MOV	2(R1),2(R0)		;Update Q-descriptor tail ptr
+	$POP	R0
+	RET
+
+
+	.END
+

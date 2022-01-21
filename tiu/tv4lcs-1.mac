@@ -1,0 +1,154 @@
+	.TITLE	TV4LCSNET-1 - LCSNET interface routines
+
+	.INSRT	../../mos/moscnf-1.sml
+	.INSRT	../../mos/mosmac.sml
+	.INSRT  mosdev-1.sml
+	.INSRT	../../mos/mostbl.sml
+	.INSRT	inet-1.sml
+	.INSRT	pktdef-1.sml
+
+
+	$CNFIG
+	$DFIOR
+	$DFNCT
+	$DFDEV
+
+	.CSECT	XMACHI
+
+	.GLOBL	$NETBL			;Network characteristics table
+	.GLOBL	GROUTE			;Get local destination for INET addr
+
+	.GLOBL	$TCPID			;Local TCP inet address
+	.GLOBL	$NETID			;Network ID from switches
+	.GLOBL	$HSTID			;Terminal ID from switches
+	.GLOBL	$EXTGT			;Gateway to external nets
+	.GLOBL	$LCLGT			;Gateway to mitnet subnets
+
+	.ENABL	ISD
+
+
+
+	.SBTTL	.	NETINI - Network initialization
+;
+; NETINI - Network initialization procedures
+;
+
+NETINI:	MOV	$NETID,$TCPID		;Set local addr from id switches
+	MOV	$HSTID,$TCPID+2
+	RET
+
+	.SBTTL	.	NETIN - Network input routine
+
+;
+; NETIN - Network input transfer initialization routine.
+;
+; Called with:	R0 - input signal opcode
+;
+
+NETIN:	$PUSH	R0,R2
+	MOV	$NETBL+NT.RL,R0		;Get size of received messages
+	$AVS	R0			;Allocate a receive buffer & IORB
+	MOV	R2,R0
+	MOV	$NETBL+NT.DVI,IRDEV(R0)	;Set device to network input
+	MOVB	2(SP),IROPC(R0)		;  and signal opcode
+	MOV	R0,IRUVA(R0)
+	ADD	#IORBL,IRUVA(R0)	;Calculate address of pkt buffer
+	MOV	$NETBL+NT.RL,IRBR(R0)	;Set max byte count
+	$SIO	R0			;Start i/o request
+	$POP	R2,R0
+	RET
+
+	.SBTTL	.	NETINC - Input completion processing
+
+;
+; Called with:	R1 - pointer to IORB
+;
+; Returns with:	R2 - pointer to INET header
+;
+
+NETINC:	TST	IRSTA(R1)		;Check I/O transfer status
+	BMI	2$			;If interface down error, skip
+	MOV	IRUVA(R1),R2		;R2 - address of packet buffer
+	SUB	$NETBL+NT.HL,IRBX(R1)	;Sub length of header from byte count
+	BLO	3$			;If not long enough, skip
+	SUB	$NETBL+NT.TL,IRBX(R1)	;Sub length of trailer
+	BLO	3$			;If not long enough, skip
+ 	BEQ	4$			;If header/tailer only msg, skip
+	ADD	$NETBL+NT.HL,R2		;Advance pkt ptr to start of inet hdr
+	MOV	R2,IRUVA(R1)		;Save updated pointer
+	CLR	R0
+1$:	RET
+
+
+2$:	MOV	#ER.DWN,R0		;Network down error
+	BR	1$
+
+3$:	MOV	#ER.LNH,R0		;Error in local net header
+	BR	1$
+
+4$:	MOV	#ER.CTL,R0		;Local network control message
+	BR	1$
+
+	.SBTTL	.	NETOT - INET send-to-network routine
+
+;
+; NETOT - INET send-to-network transfer initialization routine.
+;
+; Called with:	R0 - signal opcode
+;		R1 - addr of IORB
+;		R2 - addr of INET header
+;
+
+NETOT:	$PUSH	R0,R1,R2,R3,R4
+	MOV	R2,R3			;Get pointer to INET header
+	SUB	$NETBL+NT.HL,R3		;Backup to point to LNI hdr
+	MOV	R3,IRUVA(R1)		;and save away
+	ADD	$NETBL+NT.HL,IRBR(R1)	;Include LNI hdr in byte count
+	MOV	$NETBL+NT.DVO,IRDEV(R1)	;Set output device number
+	MOVB	R0,IROPC(R1)		;  and I/O complete signal
+	MOV	R1,R0			;(KSK,9/29 ELIM. AHDR FOR LNI HDR)
+	CLR	(R3)+			;CLEAR WORD #1 OF DPNM IN LNI HDR 
+	CLR	(R3)+			;AND SECOND WORD
+	ADD	#4,R3			;SKIP DPN
+	CLR	(R3)+			;CLR 1ST WORD OF OPN
+	CLR	(R3)+			;AND SECOND
+	CLR	(R3)			;AND LENGTH FIELD
+	MOV	IRBR(R1),R4		;SET LEN FIELD
+	SUB	$NETBL+NT.HL,R4
+	MOV	R4,(R3)
+	SUB	#10,R3			;ADJUST R3 TO POINT AT DPN
+	MOVB	#1,(R3)+		;FILL DPN  INTERNAL DATAGRAM
+	MOVB	$NETID+1,(R3)+		;LOCAL SUBNET
+	CLRB	(R3)+
+	CMPB	$NETID,IH.DST(R2)	;MITNET ?
+	BNE	5$			;SEND TO EXT GATEWAY
+	CMPB	$NETID+1,IH.DST+1(R2)	;SAME SUBNET ?
+	BNE	4$			;SEND TO APPROP. SUBNET GATEWAY
+	MOVB	IH.DST+3(R2),(R3)	;LOCAL HOST
+	BR	6$
+4$:	MOVB	$LCLGT,(R3)		;GET GATEWAY TO SUBNETS
+	BR	6$
+5$:	MOVB	$EXTGT,(R3)		;EXTERNAL GATEWAY
+	BR	6$
+6$:	$SIO	R0			;Start I/O
+	$POP	R4,R3,R2,R1,R0
+	RET				;and return
+
+	.CSECT	XMACHD, STATIC
+
+	.SBTTL	Network Characteristics Table
+
+
+$NETBL:	.WORD	NETINI			;Network initialization
+	.WORD	NETIN			;Read from network
+	.WORD	NETINC			;Input completion handling
+	.WORD	NETOT			;Send to network
+	.WORD	0			;Network down
+	.WORD	LNI.LEN			;Length of LNI leader
+	.WORD	0			;Length of trailer ?
+	.WORD	1022.+IORBL		;Size of received packets
+	.WORD	1022.+IORBL		;Size of transmitted packets
+	.WORD	DV.LNI			;Network input device
+	.WORD	DV.LNI+1		;Network output device
+
+	.END

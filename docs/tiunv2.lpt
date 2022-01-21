@@ -1,0 +1,6935 @@
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+               TERMINAL INTERFACE UNIT NOTEBOOK
+
+               VOLUME 2 -- SOFTWARE DOCUMENTATION
+
+               April 1979
+
+
+               By: James E. Mathis
+                   Keith S. Klemba
+                   Andrew A. Poggio
+
+
+               ARPA Order No. 2302
+               Contract No. MDA903-78-C-0126
+               Effective Date:  1 November 1977
+               Expiration Date:  31 October 1979
+               SRI Project No. 6933
+
+
+
+               This research was sponsored by the Defense Advanced
+               Research Projects Agency under ARPA Order No. 2302,
+               Contract MDA903-78-C-0126, monitored by Dr. V. Cerf.
+
+               The views and conclusions contained in this document are
+               those of the authors and should not be interpreted as
+               necessarily representing the official policies, either
+               express or implied, of the Defense Advanced Research
+               Projects Agency or the United States Government.
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+                                SUMMARY
+
+
+     This manual is Volume 2 of SRI's TIU Notebook and is intended to
+
+provide detailed documentation of the software in the TIU.  The TIU
+
+Notebook describes the Terminal Interface Unit developed by SRI as it is
+
+used to connect terminals to the Packet Radio Network.  Volume 1
+
+provides an overview of the system and is a User's Guide to the TIU.
+
+Volume 3 describes the TIU hardware configurations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   ii
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+                                CONTENTS
+
+
+
+SUMMARY .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    ii
+
+
+LIST OF TABLES   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    vi
+
+
+   I OVERVIEW OF THE TIU  .  .  .  .  .  .  .  .  .  .  .  .  .  .     2
+
+
+  II SYSTEM CONVENTIONS   .  .  .  .  .  .  .  .  .  .  .  .  .  .     2
+
+     A.   File Naming Conventions  .  .  .  .  .  .  .  .  .  .  .     3
+
+     B.   Symbol Syntax Conventions   .  .  .  .  .  .  .  .  .  .     6
+
+     C.   Register Usage Conventions  .  .  .  .  .  .  .  .  .  .     7
+
+
+ III SYSTEM GENERATION PROCEDURES  .  .  .  .  .  .  .  .  .  .  .     7
+
+     A.   System Configuration  .  .  .  .  .  .  .  .  .  .  .  .     7
+
+     B.   Sample Generation Session   .  .  .  .  .  .  .  .  .  .    10
+
+
+  IV THE LSI-11 ROBUSTNESS SYSTEM  .  .  .  .  .  .  .  .  .  .  .    11
+
+     A.   The LSI-11 Robustness System Software   .  .  .  .  .  .    13
+
+
+   V SOFTWARE DEBUGGING FACILITIES .  .  .  .  .  .  .  .  .  .  .    15
+
+     A.   Debugging with Microcode ODT   .  .  .  .  .  .  .  .  .    15
+
+     B.   Stand-alone Debugging with DDT .  .  .  .  .  .  .  .  .    15
+
+     C.   XRAY Debugging  .  .  .  .  .  .  .  .  .  .  .  .  .  .    18
+
+     D.   XNET Debugging  .  .  .  .  .  .  .  .  .  .  .  .  .  .    19
+
+
+  VI NETWORK MEASUREMENT SUPPORT   .  .  .  .  .  .  .  .  .  .  .    20
+
+
+                                  iii
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     A.   The Traffic Stream Command Parser .  .  .  .  .  .  .  .    20
+
+     B.   Traffic Stream Control Process .  .  .  .  .  .  .  .  .    21
+
+     C.   The Measurement Process  .  .  .  .  .  .  .  .  .  .  .    23
+
+     D.   Module Configuration  .  .  .  .  .  .  .  .  .  .  .  .    28
+
+
+ VII THE MICRO OPERATING SYSTEM (MOS) .  .  .  .  .  .  .  .  .  .    28
+
+     A.   System Overview .  .  .  .  .  .  .  .  .  .  .  .  .  .    29
+
+     B.   MOS Configuration Parameters   .  .  .  .  .  .  .  .  .    36
+
+     C.   MOS System Calls   .  .  .  .  .  .  .  .  .  .  .  .  .    38
+
+     D.   Debugging MOS Processes  .  .  .  .  .  .  .  .  .  .  .    60
+
+     E.   MOS System Tables and Data Structures   .  .  .  .  .  .    62
+
+     F.   I/O Device Driver Linkage   .  .  .  .  .  .  .  .  .  .    65
+
+
+VIII TIU I/O UTILITIES .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    65
+
+
+  IX DISPATCH/SPP PROCESS .  .  .  .  .  .  .  .  .  .  .  .  .  .    66
+
+     A.   DSP System Calls   .  .  .  .  .  .  .  .  .  .  .  .  .    67
+
+     B.   Application Notes  .  .  .  .  .  .  .  .  .  .  .  .  .    77
+
+
+   X THE TRANSMISSION CONTROL PROGRAM .  .  .  .  .  .  .  .  .  .    86
+
+     A.   TCP Configuration Parameters   .  .  .  .  .  .  .  .  .    87
+
+     B.   Unimplemented TCP Functions .  .  .  .  .  .  .  .  .  .    89
+
+     C.   TCP Interface to the User Process .  .  .  .  .  .  .  .    90
+
+     D.   Structure of the User Process under TCP .  .  .  .  .  .    94
+
+     E.   TCP Interface to the Network   .  .  .  .  .  .  .  .  .    96
+
+     F.   Connection Control Variables   .  .  .  .  .  .  .  .  .    97
+
+     G.   TCP Process Structure .  .  .  .  .  .  .  .  .  .  .  .   103
+
+
+
+                                   iv
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+REFERENCES .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .   116
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   v
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+                                 TABLES
+
+
+  1   DDT Debugging Commands .  .  .  .  .  .  .  .  .  .  .  .  .    19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   vi
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                        I   OVERVIEW OF THE TIU
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   1
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                        II   SYSTEM CONVENTIONS
+
+
+     To fully understand the source-code and documentation of a system,
+
+the user must be aware of the various usage conventions.  Often,
+
+important details are implied by the use of standard file names, symbol
+
+syntax, or register numbers.  Some of these conventions are imposed by
+
+the development system software and would be unfamiliar to users of
+
+another system.  Other conventions are used to impart regularity to the
+
+various source code modules and assist in producing interdependent
+
+modules.  The important TIU conventions are in the areas of:
+
+
+     .  File naming
+
+     .  Symbol syntax
+
+     .  Register usage
+
+
+     If a user transfers the TIU source code to another development
+
+system, it is his responsibility to comply with the new operating system
+
+conventions and to update the documentation appropriately.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   2
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+A.   File Naming Conventions     ____ ______ ___________
+
+
+     As will be discussed later, all TIU software development is done on
+
+a large timesharing computer of the DECsystem 10 family running the
+
+TOPS-20 operating system.  The file naming convention is used to
+
+facilitate discussions about the software modules and provides a unique
+
+method of reference.  In TOPS-20, a file name is composed of three
+
+parts--the root name, an extension to the name, and a generation number.
+
+For example a file with a root name of "NAME," an extension of "EXT,"
+
+and a generation number of 12 would have a TOPS-20 file name of:
+
+                              NAME.EXT.12
+
+
+     The three parts of a file name are separated by a period.
+
+
+     1.   Root Name          ____ ____
+
+
+          The root name is the principle means of identifying a file, as
+
+the extension and generation number often assume default values chosen
+
+according to the file usage context.  Root names for TIU software are of
+
+the form:
+
+                            MODULE-REVISION
+
+
+          where MODULE identifies the function being performed and
+
+REVISION identfies software updates.  For example, the root name and
+
+extension of the initial revision of the MOS processor management file
+
+is: MOSPM-1.M11.  The first three letters of the module name usually
+
+refer to the major functional component, such as MOS, DSP, or TCP.
+
+
+
+
+                                   3
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Additional characters are added to delineate subfunction; in this case
+
+"PM" standing for "processor management" is appended.  The revision
+
+number is appended to the module name to distinguish between versions of
+
+the same module that operate or interface differently and the revision
+
+number is incremented for each major change which would require changes
+
+in other modules.  In succeeding sections of the documentation, when
+
+just a module name appears, the latest revision of the module is being
+
+referenced.
+
+
+     2.   File Extension          ____ _________
+
+
+          The extension to the root name field indicates the "type" of
+
+file, or its contents or purpose.  MACN11 source files, by convention,
+
+use the extension "M11" and when there are several files of the same
+
+root name but with different extensions, the assembler will
+
+automatically select the file with the "M11" extension.  Likewise, the
+
+extension field is used by the compilation control facility as an
+
+indication of the file contents.  The major file extensions are:
+
+
+M11            Indicates a file containing MACN11 source code.  The
+               MACN11 assembler assumes that its input files to have
+               this extension unless an explicit extension is supplied.
+
+SML            Indicates a file containing a MACN11 macro library.
+               These libraries contain macros used to define equates for
+               accessing table entries and macros that generate system
+               calls.
+
+CNF            Indicates a MACN11 macro library file containing
+               configuration information.
+
+OBJ            Indicates a file containing relocatable LSI-11 object
+               code which has not been linked.  This extension is used
+               by MACN11 for its object code output file and is expected
+               by LINK11 for its input files.
+
+                                   4
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+LST            Indicates a formatted listing file produced by MACN11.
+
+BIN            Indicates a binary load module for the LSI-11.  This
+               extension is used by LINK11 and is assumed by the LSI
+               program.
+
+MAP            Indicates a symbol address map produced during linkage
+               editing.  This extension is used by LINK11.
+
+CMD            Indicates a LOAD/COMPILE compilation control facility
+               command file.  This file contains commands that govern
+               the generation of a load module.
+
+
+     3.   File Generation Numbers          ____ __________ _______
+
+
+          As successive versions or copies of a file are made (with the
+
+same root name and extension), the TOPS-20 system automatically assigns
+
+the file a unique, monotonically increasing generation number.  The file
+
+with the largest generation number is assumed to be most recently
+
+created, and a file with the smallest is assumed to be the oldest.
+
+Unless explicitly directed otherwise, all development programs will
+
+operate on the file with the largest generation number.
+
+
+          This generation number is distinct from the revision number
+
+which is part of the root name.  The generation number is used to
+
+distinguish between minor changes in a module; the revision number
+
+distinguishes between major, incompatible changes.  The generation
+
+number is also assigned automatically by the operating system but the
+
+programmer must manually assign the revision number.
+
+
+
+
+
+
+
+
+
+                                   5
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+B.   Symbol Syntax Conventions     ______ ______ ___________
+
+
+     The TIU source files conform to most of the DEC symbol naming
+
+conventions.  Most global symbols start with the "$" character.
+
+
+C.   Register Usage Conventions     ________ _____ ___________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   6
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                   III   SYSTEM GENERATION PROCEDURES
+
+
+     The system generation procedures for creating a new TIU load module
+
+are very much simplified by the use of the compilation facilities in the
+
+TOPS-20 EXEC.  However, the first time a load module is generated, the
+
+system configuration must be specified.  Once the configuration is
+
+specified, generation becomes an almost automatic process.
+
+
+A.   System Configuration     ______ _____________
+
+
+     Before a system can be generated, its configuration must be fully
+
+specified.  Two levels of configuration options are available: at the
+
+module level and at the system level.  Most modules have some number of
+
+internal configuration parameters (usually implemented as conditional
+
+assembly switches) which tailor the module's function; these parameters
+
+are discussed in the sections documenting the individual modules.  At
+
+the system level, the configuration options fall into four catagories:
+
+
+     .  Function or module selection
+
+     .  Process configuration
+
+     .  Device driver selection
+
+     .  I/O device address assignment.
+
+The process, device driver, and I/O device address parameters are used
+
+to configure the operating system so that it supports the modules or
+
+functions selected.
+
+
+                                   7
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     1.   Function or Module Selection          ________ __ ______ _________
+
+
+          Before the system can be configured, the user must determine
+
+the functions which the system should support.  Usually, there is a
+
+close mapping between functions and modules; if the system is to support
+
+internetwork terminal access, for example, the modules providing the TCP
+
+and TELNET functions must be included in the final system.  This
+
+inclusion is performed at linkage editing time by the linker.  Below is
+
+a list of sample functions:
+
+
+     .  PRNET SPP protocol support--provided by the DSP modules.
+
+     .  Internetwork TCP protocol support--provided by the TCP modules.
+
+     .  TELNET terminal access protocol support--provided by the TELNET
+        modules.
+
+     .  Operator control support--provided by the OPCON modules.
+
+     .  PRNET performance monitor--provided by the PMON module.
+
+     .  PRNET traffic sourcing capabilities--provided by the TS modules.
+
+     .  PRNET network measurement support--provided by the MEAS module.
+
+     .  Local symbolic debugging support--provided by the DDT module.
+
+
+          Refer to the system generation documentation of the individual
+
+modules for a list of the individual module names.
+
+
+     2.   Process Configuration          _______ _____________
+
+
+          The linking process used in module selection, as discussed
+
+above, only assures that the code is included in the load module; if the
+
+code is to be executed, a proper process configuration must be
+
+
+
+                                   8
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+established.  As discussed in the introductory section, a process can be
+
+considered to be a flow of "control" or statement execution.  Even
+
+though the code for TCP protocol handling may be included in a load
+
+module, unless a process is established which will execute that code,
+
+the final system will not provide TCP support.
+
+
+          The process configuration is declared within the $PCON macro,
+
+which resides in the MOSTBL source file.  Assembly of the MOSTBL file
+
+produces the process and I/O device database used by the MOS kernel.
+
+The $PCON macro is edited to define the appropriate processes, as
+
+described in the system generation documentation for each of the
+
+functional modules.  The $CREAP macro is used to specify the attributes
+
+of the individual processes.  The syntax of the macro is:
+
+     $CREAP  ENTRY,<Name  >,CAPABILITIES,INPUT-DEVICE,OUTPUT-DEVICE
+
+
+          Where:
+
+
+ENTRY          is the global symbol of the process' entry point, e.g.,
+               the address of the first instruction executed.  This is a
+               required parameter.
+
+Name           is the six-character ASCII string name of the process,
+               enclosed in angle brackets.  The name is returned by the
+               @b[Get Process Name] primitive $GPNAM.  If parameter will
+               default to all blanks if not supplied.
+
+CAPABILITIES   is the octal number that is stored in the capabilities
+               field of the process control table.  This parameter is
+               included for future expansion and should not normally by
+               specified.
+
+INPUT-DEVICE   is the device number of the default primary input device.
+               This is the device from which input is taken when using
+               the synchronous I/O primitives (such as $BIN or $SIN), or
+               when the device DV.PRI (-1) is specified in the device
+               number field of the IORB.  If this parameter is not
+
+
+                                   9
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+               specified, process execution will be suspended and the
+               process placed in the detached state on execution of
+               synchronous I/O or if reference is made to DV.PRI in
+               asynchronous I/O calls.  The primary input device can be
+               dynamically changed via the @b[Set Process I/O] primitive
+               $SPRIO.
+
+OUTPUT-DEVICE  is the device number of the default primary output
+               device.  This is the device to which output is directed
+               when using the synchronous I/O primitives or when the
+               device DV.PRO (-2) is specified in the device number
+               field of the IORB.  If this parameter is not specified,
+               process execution will be suspended and the process
+               placed in the detached state on execution of synchronous
+               I/O or if reference is made to DV.PRO in asynchronous I/O
+               calls.  The primary output device can be dynamically
+               changed via the Set Process I/O primitive $SPRIO.
+
+
+          A sample $PCON macro is shown in Table xx.
+
+
+     3.   Device Driver Selection          ______ ______ _________
+
+
+     4.   I/O Address Assignments          ___ _______ ___________
+
+
+B.   Sample Generation Session     ______ __________ _______
+
+
+     1.   Sample Cross-Assembly Session          ______ ______________ _______
+
+
+     2.   Sample Cross-linking Session          ______ _____________ _______
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   10
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                   IV   THE LSI-11 ROBUSTNESS SYSTEM
+
+
+     As the TIU development progressed, the program storage medium has
+
+evolved from paper tape to magnetic digital cassettes, with each TIU
+
+being loaded over its EIA console terminal port either from a TI 733
+
+binary digital cassette terminal or, alternatively, from a direct hard-
+
+wired terminal line attached to a mainframe computer, such as the SRI-KL
+
+TOPS-20 system.  This dependency on auxiliary support equipment for
+
+program storage and loading is a minor inconvience in the laboratory but
+
+becomes a major stumbling block in the deployment of TIUs at remote
+
+locations.  Hence the need to develop a method for the remote loading of
+
+TIUs, using the communications capability of the PRNET.
+
+
+     The need for program reloading arises in three different
+
+situations--recovery from a power failure, recovery from a program
+
+failure, and replacement of the operating software with a revised
+
+version.  If software replacement was a sufficiently rare event, the use
+
+of non-volatile program storage (such as UV-erasable PROMs) would allow
+
+easy recovery from a power failure.  However, software replacement is
+
+expected to happen frequently enough in a research and development
+
+environment, owing to protocol changes, bug-fixes, and new software
+
+releases, to make the use of non-volatile storage impractical.
+
+
+
+
+
+
+                                   11
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     In addition to frequent software changes, the TIU development has
+
+reached the point where, because of memory and program addressing
+
+constraints, all of the currently developed or planned software cannot
+
+physically coreside within the same TIU.  Several different load modules
+
+are available that have been tailored to fit into the addressing
+
+capacity of the LSI-11 and to satisfy specific user needs.  By allowing
+
+for the selection of software modules based on the TIU's internetwork
+
+ID, it is expected that automatic internetwork loading will provide a
+
+general program storage facility for the TIUs.  This capability would
+
+provide the automatic loading of production software into turn-key
+
+systems and the flexibility of accessing customized software packages
+
+without the need for local secondary storage.
+
+
+     In addition to software reloading, the LSI-11 robustness system
+
+provides two important features:
+
+
+     .  Continual monitoring of correct software operation by a watch-
+        dog timer
+
+     .  Automatic execution of system exerciser diagnostics to detect
+        hardware problems.
+
+
+     The LSI-11 robustness system is composed of four major components:
+
+the LSI-11 robustness hardware module, the initialization system
+
+exerciser software, the LSI-11 internetwork loading software, and an
+
+automatic loading utility program that resides on PDP-10 hosts.  The
+
+robustness hardware is documented in detail in Volume 3 of the TIU
+
+Notebook and the PDP-10 loader-server utility is described in Volume 4.
+
+
+
+
+                                   12
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+A.   The LSI-11 Robustness System Software     ___ ______ __________ ______ ________
+
+
+     On power-up or after the watchdog timer initiates recovery
+
+procedures, the bootstrap software will perform a simple set of CPU and
+
+memory diagnostics designed to catch most hardware failures; these
+
+diagnostics will be similar to those performed by the PDP-11/34
+
+bootstrap.  If the LSI-11 hardware fails to pass these tests, an
+
+appropriate message is issued to the console port (if possible)
+
+pinpointing the general problem area and giving specific information
+
+about the failure.  The procedures for handling hardware failures will
+
+be refined when we have had sufficient experience with malfunctioning
+
+hardware.  Once the hardware has been successfully exercised by the
+
+diagnostics, the bootstrap reads the unit identification information
+
+(interpreted as the terminal ID and network number assigned to the TIU)
+
+and is ready to initiate internetwork loading.
+
+
+     The bootstrap uses the XNET bootstrap loading procedure with one
+
+slight modification; to initiate the loading process, the bootstrap
+
+sends a "load-me" message to a predesignated set of internetwork loader-
+
+server sites.  To simulate a broadcast protocol, the bootstrap sends its
+
+"load-me" messages to each of the hosts contained in an internal table
+
+and then waits for a reply.  The bootstrap will load from the first host
+
+that responds.  If the bootstrap doesn't receive a response within a
+
+timeout interval, it broadcasts its request again.  When a loader-server
+
+receives a request, it scans a file that contains the name of a file to
+
+be loaded into each TIU.  If it is not possible to access the indicated
+
+
+
+                                   13
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+file (or if no file is indicated), the server ignores the request.  If
+
+successful, the server attempts to load the file into the TIU by using
+
+the XNET bootstrap procedure.  If the bootstrap program detects loss-of-
+
+flow from the server site, it aborts the loading and reinitiates the
+
+recovery procedure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   14
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                   V   SOFTWARE DEBUGGING FACILITIES
+
+
+     The programming environment of the TIU provides support for four
+
+types of software debugging tools: console debugging via the microcode
+
+ODT, local debugging via the console terminal giving stand-alone
+
+symbolic debugging, remote debugging via the radio channel from the
+
+station XRAY process, and internetwork debugging using the XNET process
+
+on any ARPANET service host.  The facilities provided by these tools are
+
+summarized in the following sections.
+
+
+A.   Debugging with Microcode ODT     _________ ____ _________ ___
+
+
+B.   Stand-alone Debugging with DDT     ___________ _________ ____ ___
+
+
+     The most frequently used LSI-11 debugging method requires linking a
+
+stand-alone debugger, DDT (Dynamic Debugging Technique), with the TIU
+
+software.  Receiving commands over the TIU console terminal port, DDT
+
+provides its own I/O drivers, does not require a network hook-up, and
+
+uses none of the MOS primitives; it can be used to debug any of the TIU
+
+applications process or the MOS kernel.  DDT provides for symbolic
+
+access to program locations and allows for instruction print-out or
+
+entry in mnemonic form.  DDT obtains its symbol definitions during the
+
+linking procedure, and can be given symbols that are local to each
+
+source file, or that are global to the system.
+
+
+
+
+                                   15
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     DDT provides a highly sophisticated set of debugging function,
+
+including:
+
+
+     .  Symbolic naming of program locations, augmentable at run-time
+
+     .  Mnemonic instruction entry and print-out
+
+     .  8 breakpoints
+
+     .  Single-stepping
+
+     .  Flexible output formatting, with setable radix.
+
+Table 1 lists the DDT commands, with a brief description.
+
+
+     In DDT commands, numbers can be any combination of the following:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   16
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     <Octal number>
+     <Decimal number>.
+     <Program symbol>
+     " <Delimiter> <Two ASCII Characters> <Delimiter>
+     "$ <Delimiter> <Three Radix-50 Characters> <Delimiter>
+     <Instruction>
+
+
+     The operators "+" (addition), "-" (subtraction), "*"
+
+(multiplication), and "'" (division) are evaluated from left to right
+
+unless parenthesis are included.  A space is treated like a plus except
+
+after instructions, when it is merely a separator.  All input is
+
+accepted in lower or upper case and is folded (except for text).
+
+
+           n/     Open word n.  Type contents in current mode
+            /     Open word pointed to by last typed value
+           n<CR>  Modify currently opened word to be n.  Close word.
+           n<LF>  Modify, close, open next word
+           n^     Modify, close, open previous word
+           n<TAB> Modify, close, open word pointed to by last typed
+                  address
+            $S    Change current mode to instruction type out
+            $A    Addresses will be typed as absolute numbers
+            $R    Addresses will be typed relative to symbols
+            $C    Change current mode to numeric type out
+           $nR    Change current radix for $C to n (n read in decimal)
+            $T    Change current mode to ASCII text output
+           $5T    Change current mode to Radix-50 text output
+            $H    Change to halfword (byte) mode  (reset by $5T and $S)
+                  Note that the initial modes are $S and $8R.  These
+                  can be temporarily changed by the above commands and
+                  will return to the permanent setting by a carriage
+                  return.  The settings can be permanently changed by
+                  using two altmodes before the mode setting command
+                  ($$T sets permanent ASCII mode)
+           n[     Open location n, type as a numeric
+           n]     Open location n, type as an instruction
+           n!     Open location n, do not type value
+            ;     Retype currently open word
+            =     Retype currently open word as number
+           n=     Type value of n as a number
+            _     Retype currently open word as instruction
+            n$G   Start executing program at location n.  Default is to
+                  start execution at address in JOBSA (start of program)
+            v$nB  Set breakpoint n at address v (n from 1 to 8 or can
+                  be omitted)
+
+                                   17
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          a,v$nB  Same as above but open address a at breakpoint
+            0$nB  Remove breakpoint n
+             $B   Remove all breakpoints
+             $P   Proceed from breakpoint
+            n$P   Proceed from breakpoint n times (without halting)
+            n$UW  Set offset limit to n (used when typing addresses)
+             $1UT Turn on single stepping (break at every instruction)
+            a$UT  Turn on single stepping and open location a at each
+                  break
+             $UT  Turn off single stepping
+            a:    Make current location have symbolic name a
+          v<a:    Make symbolic name a have value v
+            a$$K  Delete symbolic name a
+            a$K   Delete symbolic name a from typeout only
+             $D   Perform an $K on the last symbol coloned (:)
+          l<u$$Z  Zero memory from l to u
+            n$M   Set mask for searches (below) to n
+          l<u>s$W Search core from l to u for word s
+          l<u>s$E Search core from l to u for effective address s
+          l<u>s$N Search core from l to u for word not equal to s
+
+
+
+C.   XRAY Debugging     ____ _________
+
+
+     To provide for cross-radio access to TIU memory, an XRAY server
+
+process was also implemented for the TIU.  The functions provided by the
+
+XRAY protocol are only a very restricted set of debugging operations,
+
+however, limited to examining or altering the contents of a memory
+
+location as specified by absolute numeric address, in hexadecimal or
+
+octal radix.
+
+
+     The XRAY debugging protocol  [1] was specifically designed for a
+
+word-addressable computer, such as the IMP-16 microprocessor used in the
+
+PR digital unit.  Because the LSI-11 is a byte-addressable computer, the
+
+TIU XRAY server provides a limited amount of protocol translation.
+
+
+
+
+
+
+                                   18
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+                                Table 1
+
+
+                         DDT DEBUGGING COMMANDS
+
+
+
+D.   XNET Debugging     ____ _________
+
+
+     A very powerful set of operations are allowed by the XNET debugging
+
+protocol.  XNET uses a large computer (PDP-10 running TENEX or TOPS-20)
+
+to talk to a small computer (LSI-11 running MOS) across multiple
+
+communications networks.  The program being debugged runs in the small
+
+computer, which also runs a compact debugger process performing various
+
+commands (such as examine, deposit, start, stop) upon direction from the
+
+large computer.  The large computer has a larger memory space and
+
+greater processing power, facilitating several debugging conveniences;
+
+the most important being access to a file system.
+
+
+     However, XNET's most innovative feature lies in the ability to
+
+remotely debug a TIU.  Previously, a system programmer would need to be
+
+physically present, issuing commands over a local terminal port; with
+
+XNET, the need for physical access is replaced with access via
+
+internetwork communication links, including the radio link of the PRNET.
+
+
+     The functions provided by XNET are similar to those provided
+
+locally by DDT.  Detailed XNET user documentation may be found in BBN
+
+Report 3377  [2].
+
+
+
+
+
+
+
+                                   19
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                    VI   NETWORK MEASUREMENT SUPPORT
+
+
+     For network measurement support three processes are included in the
+
+TIU--TSPAR, TS and MEAS.  The traffic stream parser (TSPAR) process is a
+
+command parser which allows local entry and examination of traffic
+
+stream parameters and provides control over the multiple traffic
+
+streams.  The traffic source (TS) process is the traffic stream
+
+controller, starting and stopping traffic streams upon command from
+
+TSPAR or the measurement process.  The measurement process (MEAS) allows
+
+remote control of TS and periodically sends cumulative measurement
+
+statistics to the station.
+
+
+A.   The Traffic Stream Command Parser     ___ _______ ______ _______ ______
+
+
+     The traffic stream parser, TSPAR, allows control of up to four
+
+traffic streams.  When the TIU is initially started, TSPAR prints out a
+
+header and a prompt which indicates which traffic stream is being
+
+controlled.  The prompt is "TSn:" where n is the number of the stream
+
+(0-3).  To switch to another traffic stream the user types "SW" followed
+
+by a number which specifies the new traffic stream number to be
+
+controlled.
+
+
+     Two types of traffic streams may be specified.  An SPP stream which
+
+is a reliable connection using end-to-end acknowledgments and
+
+
+
+
+                                   20
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+retransmissions or a transparent stream which does not use end-to-end
+
+acknowledgments or retransmissions.  Within these two types the traffic
+
+stream can be specified as either a sink or a source.
+
+
+     A traffic sink, when started, simply listens until another traffic
+
+source (could be from the same TIU) starts sending packets to it.  In
+
+the case of an SPP connection, the packets received are acknowledged and
+
+discarded.  For a transparent connection, the packets are discarded
+
+only.  When the connection is closed, the sink goes back into a
+
+listening state.
+
+
+     Operational details and a list of TSPAR commands in contained in
+
+the User's Guide, Volume 1 of the TIU Notebook.
+
+
+B.   Traffic Stream Control Process     _______ ______ _______ _______
+
+
+     The traffic stream control process maintains the connections for
+
+the traffic streams started by either TSPAR or the measurement process;
+
+up to four traffic streams may be started running simultaneously.  The
+
+traffic streams can be either a source of packets to another
+
+destination, a sink of packets from another traffic source, or it can be
+
+a source of packets to itself in which case it functions as a sink.
+
+
+     The parameters and state of each traffic stream are maintained in
+
+the traffic stream table (TSTBL).  For each traffic stream the following
+
+information is contained in TSTBL:
+
+
+TSNUM          Traffic stream number.  (16 bits)
+
+
+
+                                   21
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+TSTATE         Traffic stream state and options.  (16 bits)
+
+TSCID          Traffic stream connection ID.  (8 bits)
+
+TSSPR          Spare byte.  (8 bits)
+
+TSNPKT         Number of packets to send.  (16 bits)
+
+TSPKTL         Packet length including header.  (16 bits)
+
+TSPKDS         Packet destination ID.  (16 bits)
+
+TSMNPD         Inter-generation time.  (16 bits)
+
+TSPOUW         Width of uniform packet delay distribution.  Currently
+               not used.  (16 bits)
+
+TSPATY         Pattern type number.  Not used.  (16 bits)
+
+TSPKPT         Address of packet descriptor.  (16 bits)
+
+TSWRKC         Work count for events outstanding.  (16 bits)
+
+TSTBL consists of a replication of the above entries for each traffic
+
+stream.
+
+
+     Once a traffic stream is started, TS establishes a connection
+
+through DSP and fields all signals pertaining to the connection.
+
+
+     To start a traffic source, the entries specifying the number of
+
+packets to send, packet length, packet destination, inter-packet
+
+generation time, and stream option flags must be initialized.  Once
+
+these entries are set, the traffic stream can be started by signaling
+
+the TS process with an op-code specifying the "GO" function and the
+
+traffic stream number as data.  To start a traffic sink, only the stream
+
+option flags need to be set before signaling TS.
+
+
+
+
+
+
+                                   22
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     To pause a traffic source, TS can be signaled with an op-code
+
+specifying the "pause" function and the traffic stream number.  A pause
+
+on a traffic sink is a no-op.
+
+
+     To stop a traffic source the field in TSTBL specifying the number
+
+of packets to send is zeroed.  A traffic sink connection can be reset by
+
+signalling TS with a "stop" function and the traffic stream number.
+
+
+C.   The Measurement Process     ___ ___________ _______
+
+
+     The TIU measurement process controls traffic streams in the TIU and
+
+sends TIU cumstats over an SPP connection to the measurement process in
+
+the station.  A measurement run is started in the TIU by connecting to
+
+the listening measurement process in the TIU and sending a parameter
+
+packet.  The TIU measurement process then sends back an acknowledgment
+
+parameter packet and at a specified interval sends cumstats.  The
+
+measurement run will continue until the connection is closed by the
+
+station.  If an error occurs on the connection at either the station's
+
+end or the TIU's end, the connection will be closed and the measurement
+
+run terminated.
+
+
+     The following sections specify the formats of the packets sent over
+
+this connection.
+
+
+
+
+
+
+
+
+
+
+
+                                   23
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     1.   Input Packets          _____ _______
+
+
+          When the TIU measurement process is started it opens a
+
+listening SPP connection with a local ID of 50XX (hex), where XX is the
+
+low byte of the ID for the TIU.  When the connection is opened (i.e.
+
+the station measurement process sends a SYN * packet) the TIU
+
+measurement process will maintain an outstanding receive on the
+
+connection.  Any packets received with data will be processed as a
+
+parameter packet.  A parameter packet consists of one word specifying
+
+the cumstat interval in ticks, ** 0-n traffic stream parameter blocks
+
+and end-to-end bucket limit definitions.  The word following the cumstat
+
+interval specifies how many traffic stream parameter blocks follow.
+
+Currently this can range from zero to four.
+
+
+          The traffic stream parameter block format is:
+
+
+Word 1         Traffic stream number.  Currently this can have values of
+               0 to 3.
+
+Word 2         Number of packets to generate.  Values may range from 1
+               to 65534, indicating the number of packets to send; zero,
+               meaning stop this traffic source or sink; or -1,
+               indicating indefinite traffic generation.
+
+Word 3         Packet length, in words, including the header.
+
+Word 4         Packet destination which is the foreign logical ID.  This
+               can include logical IDs within the same TIU.
+
+Word 5         Inter-packet generation time in ticks.
+
+
+--------------------
+* In the SPP a SYN packet is the first type of packet exchanged to
+establish a connection.
+
+
+** In the TIU one tick is 1/60 th of a second.
+
+                                   24
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Word 6         Option word: The low order bit (bit 0) equal to zero
+               means the connection is transparent otherwise the
+               connection is SPP.  Bit 1 equal to zero means to source
+               packets and bit 1 equal to one means to sink packets.
+
+
+          If a traffic source has a packet destination equal to its
+
+local ID, the connection will also act as a traffic sink.  Also for
+
+traffic sinks only words 0, 1, and 5 need be specified.  Word one should
+
+have a value of -1 to start the sink and zero to stop it, any other
+
+value is ignored.
+
+
+          Following the traffic stream parameter blocks, if specified,
+
+are nineteen words specifying the upper limits for each bucket in the
+
+ETE time delay spectrum.  These limits are specified in ticks.  The
+
+limit specifications are optional and if not sent then the TIU will use
+
+its default values.
+
+
+     2.   Output Packets          ______ _______
+
+
+          When the listening connection is opened and a parameter packet
+
+is received, the measurement process sends back a parameter packet
+
+acknowledgment.  The first word of text is the packet type code which is
+
+zero.  A two word time-stamp in ticks follows the type code.  The fourth
+
+word is the cumstat interval received in the original parameter packet.
+
+The word following the cumstat interval contains the number of traffic
+
+streams affected.  This is then followed by a list of the traffic stream
+
+numbers.  Invalid or non-existent traffic stream numbers are not
+
+acknowledged.  Following the traffic stream numbers are nineteen words
+
+specifying the limits on the end-to-end delay time spectrum.
+
+
+                                   25
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          At the specified cumstat intervals the measurement process
+
+sends three types of cumstat packets.
+
+
+     .  Type 1--Labeler connection cumstat (i.e. TOP * processing)
+
+     .  Type 2--Measurement connection cumstat
+
+     .  Type 3--Traffic stream connection cumstat.
+
+The TIU measurement process will always send a type 1 and type 2 cumstat
+
+packet and will send a type 3 packet for each traffic stream that is
+
+enabled.
+
+
+          The first word of the cumstat packet is the type code.  This
+
+is followed by a two word time-stamp.  The cumstat for the connection is
+
+then given after the time-stamp.  The format of a connection cumstat is
+
+given below:
+
+
+Word 1         CLCLID--Local ID of connection.
+
+Word 2         CFGNID--Foreign ID of connection.
+
+Word 3         CSBYTS--Most significant word (MSW) of number of bytes
+               sent including the header.
+
+Word 4         Least significant word (LSW) of number of bytes sent.
+
+Word 5         CSBYTR--MSW of number of bytes received including header.
+
+Word 6         LSW of number of bytes received.
+
+Word 7         CSRTXB--MSW of number of retransmitted bytes including
+               header.
+
+Word 8         LSW of number of retransmitted bytes.  Note that CSRTXB
+               does not include the original transmission of the packet.
+               Also CSBYTS does not include retransmitted bytes.
+
+
+--------------------
+* The labeler process in the TIU periodically sends "Terminal on
+Packets" (TOP) to the station.
+
+                                   26
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Word 9         CSCUMD--MSW of cumulative delay time in ticks.
+
+Word 10        LSW of cumulative delay time in ticks.
+
+Word 11        CSPKTX--Number of packets transmitted.  Includes all
+               packets sent on this connection.
+
+Word 12        CSPKRC--Number of packets received.  Includes any packets
+               dispatched to this connection.  For example ACKs, SYNs,
+               duplicates, etc.
+
+Word 13        CSRTXP--Number of retransmitted packets.
+
+Word 14        CSACKS--Number of ACKs sent.
+
+Word 15        CSACKR--Number of ACKs received.
+
+Word 16        CSDUPA--Number of duplicate ACKs received.
+
+Word 17        CSBFRW--Number of packets received with sequence number
+               less than the left window edge (LWE).  The LWE is the
+               next expected sequence number.
+
+Word 18        CSDUPP--Number of packets received with sequence numbers
+               within the window and were duplicates.
+
+Word 19        CSBYDW--Number of packets received with a sequence number
+               greater than the right window edge (RWE).
+
+Word 20        CSARQS--Number of packets sent with the acknowledgment
+               request (ARQ) bit set.
+
+Words 21-30    CSRTFS--Discrete retransmission frequency spectrum.  This
+               contains ten buckets with a bucket size of one.
+
+Words 31-50    CSETES--End-to-end delay time spectrum (ACK time).
+               Contains nineteen buckets with the limits given in the
+               parameter ACK packet and one overflow bucket.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   27
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+D.   Module Configuration     ______ _____________
+
+
+
+
+                 VII   THE MICRO OPERATING SYSTEM (MOS)
+
+
+     Although reliable internetwork terminal access is its primary
+
+function, the TIU also performs a wide variety of network diagnostic and
+
+measurement tasks.  To adequately support these varied tasks, a
+
+flexible, multiprogrammed real-time operating system (OS) is needed.
+
+The OS should allow easy separation of the system and application
+
+software into functional components (processes), that would interoperate
+
+via well-defined interfaces; provide a means of coordination among the
+
+various TIU tasks; and ensure capability and capacity for easy future
+
+expansion.  However, memory constraints prohibited using any of the
+
+existing multiprocessing OS's developed for the PDP-11 family of
+
+computers; those OS's tailored for limited memory applications lacked
+
+necessary features.  Thus, an OS with minimal memory requirements was
+
+developed, providing the following facilities:
+
+
+     A multiprocess run-time environment
+
+     .  An interprocess communication/synchronization mechanism
+
+     .  Sharing of peripheral devices
+
+     .  Asynchronous input/output facilities
+
+     .  A sharable real-time clock
+
+     .  Storage management primitives.
+
+
+
+
+
+
+                                   28
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+A.   System Overview     ______ ________
+
+
+     The TIU software has a hierarchical structure.  At the center of
+
+the system exists a set of modules, collectively referred to as the MOS
+
+kernel, which performs tasks of resource management in the multi-
+
+processing environment.  The kernel provides a set of primitive calls
+
+for outer-level procedures, performing such tasks as process
+
+synchronization/communication, storage management, and sharing of
+
+peripheral devices and the interval timer.
+
+
+     Kernel primitives fall into four main categories: basic process
+
+management, storage management, I/O management, and extended process
+
+management.  All process management primitives are contained in the
+
+MOSPM source module, with conditional assembly control over the extended
+
+management code.  Associated with it is the MOSTBL module which contains
+
+the process definitions and process-private storage areas.  The memory
+
+management primitives reside in the MOSMEM module.  The main I/O
+
+management code is contained in the MOSIO module, with other modules
+
+containing specific device-driver code linked into the system.
+
+Currently device drivers exist for terminal-type devices (MOSTTY), and
+
+for several network interface devices (MOSNET).  The actual
+
+configuration of the MOS kernel is contained in the MOSCNF macro file.
+
+By editing this file and reassembling the source modules, the kernel can
+
+be tailored, to a limited extent, to meet user needs.
+
+
+
+
+
+
+
+                                   29
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     The MOS system is written in MACRO-11 assembly language, as is most
+
+of the TIU software, and comprises a number of logically interdependent
+
+modules, which are separately assembled and linked together, forming a
+
+single loadable file.
+
+
+     1.   Run-time Environment          ________ ___________
+
+
+          The run-time facilities are fairly extensive, with a few
+
+important restrictions enabling a memory-conserving implementation.  MOS
+
+processes are static entities, which can neither be created nor be
+
+destroyed at run-time.  At assembly time, a list of processes is
+
+defined, and space is allocated for their process-private information
+
+that is used by MOS.  A process control table (PCT) is associated with
+
+each process and contains space for a run-time stack, a status-save
+
+area, an interprocess communication area, and an initialization transfer
+
+address.  If the process is doing synchronous I/O, pointers to the I/O
+
+request blocks (IORB) are also maintained in the PCT.  All declarations
+
+of processes are grouped together within the MOSTBL source module.
+
+Using the $CREAP macro, the user declares a process's initial transfer
+
+address and various other optional attributes, and storage for the PCT
+
+is automatically allocated.  A unique process identifier (ID) is formed
+
+by numbering the processes, starting at one, in order of their
+
+definition; this ID is used to name processes in all system calls.
+
+Process ID zero is reserved as an alias for the currently running
+
+process.
+
+
+
+
+
+                                   30
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          The operating environment is designed for event-driven
+
+systems.  All processes have the same processor scheduling priority and
+
+are singly linked into a circular queue.  The scheduler scans this run
+
+queue in a round-robin fashion, searching for processes that have
+
+"events" to be processed; each process that has a nonempty message queue
+
+is, in turn, dispatched.  When a process gets control of the processor,
+
+it runs to completion (except for temporary interruptions by interrupt-
+
+level routines that are invisible to the running process), and processor
+
+context switching happens only when the running process explicitly
+
+releases control.  If no process is dispatchable, the scheduler performs
+
+a busy-wait, scanning the run queue.
+
+
+     2.   Interprocess Communication and Synchronization          ____________ _____________ ___ _______________
+
+
+          An important OS function is the interprocess communication
+
+mechanism MOS supports between processes.  Each process has an event
+
+(message) queue contained in its PCT through which other processes
+
+communicate with it.  Whenever this event queue becomes non-empty, the
+
+process is considered runnable and vies for the processor.  To signal a
+
+process of some event, the signaling process adds a message to the tail
+
+of the signaled process's event queue.  MOS provides a uniform mechanism
+
+of process signaling in the $SIGNL primitive.  This primitive takes as
+
+parameters the process ID of the signaled process, an operation
+
+indicator or event opcode, and one word of data; allocates a system
+
+storage block to contain these parameters; inserts the process ID of the
+
+signaling process into the storage block; and enqueues this storage
+
+block on the signaled process's event queue.
+
+                                   31
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          To obtain elements from its message queue, a process uses one
+
+of the various $WAIT system calls.  This call causes the process to lose
+
+control, causes its state information (registers) to be saved in its
+
+PCT, and indicates to the scheduler the type of event message the
+
+process wants to handle next.  MOS implements three types of $WAIT
+
+system calls:
+
+
+     .  $WAIT--Dispatch on any event signal.
+
+     .  $WAITS--Dispatch on any event signal having a specific opcode.
+
+     .  $WAITM--Dispatch on any event signal having one of several
+        opcodes.
+
+If and when a message appearing on the signal queue meets the
+
+requirements for dispatching indicated in the $WAIT call, this message
+
+block is removed, and the process is marked as runnable.  When the
+
+process receives control back, it resumes execution at the instruction
+
+following the $WAIT system call, with the event opcode, data, and
+
+signaler's process ID contained in its registers.
+
+
+          Since a process, once scheduled, runs to completion, the
+
+scheduling discipline enforces a primitive process
+
+synchronization/interlocking mechanism.  In the case of the protocol
+
+handling processes, this natural interlocking between processes is
+
+sufficient to control access to and ensure consistency in the shared
+
+data bases.  As long as the shared data bases are in a consistent and
+
+accessible state whenever a $WAIT is issued, there is no need for
+
+semaphores and their associated request-and-release operators.
+
+
+
+
+                                   32
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     3.   Hardware Timer Sharing          ________ _____ _______
+
+
+          MOS also has the responsibility to share the hardware timer
+
+among the various processes.  In the LSI-11, this timer is simply a
+
+line-time clock device that generates an interrupt 60 times a second.
+
+To activate a timer, a process calls the system routine $ITIME, which
+
+marks that process as desiring a signal with the specified event opcode
+
+at the specified interval.  The process is signaled with this event
+
+every time interval until the signal is canceled by calling $ITIME with
+
+the same event opcode and an interval of zero.  This mechanism provides
+
+the process with a virtual timer that generates interrupts (event
+
+signals) at a preset rate.  Currently the timing interval is in units of
+
+ticks, each tick representing 1/60 second.  MOS also supports a simple
+
+time-delayed signal.  The $STIME routine takes the same parameters as
+
+$ITIME, but the calling process is signaled only once, when the
+
+indicated time interval has elapsed.
+
+
+          In addition to interval timers, system time of day is also
+
+maintained by MOS.  The time of day can be changed using the SEt-Time-
+
+Of-Day (SETOD) primitive and read using the Get-Time-Of-Day (GETOD)
+
+call.  Time is kept in ticks, each tick representing 1/60 second.
+
+
+     4.   The I/O System          ___ ___ ______
+
+
+          The MOS I/O system provides a uniform interface between MOS
+
+processes and external peripheral devices, such as terminals or the
+
+network.  The I/O system performs three main duties for the user:
+
+
+
+                                   33
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     .  Provides device independence, allowing processes to select a
+        specific device by means of a "device name"
+
+     .  Coordinates requests for physical I/O transactions among a group
+        of processes
+
+     .  Frees the user process from the burden of I/O programming.
+
+
+          Currently MOS provides device driver support for four
+
+different types of physical devices:
+
+
+     .  A network input device
+
+     .  A network output device
+
+     .  A terminal input device
+
+     .  A terminal output device.
+
+In addition, MOS supports the concept of a "controlling" device.  With
+
+it, a process can output to or request input from its controlling device
+
+without needing to reference a specific physical device.  A default
+
+controlling device can be assigned to a process at assembly-time, and
+
+interrogated or changed dynamically.  With the addition of suitable
+
+higher-level control, a controlling device makes possible the
+
+multiplexing of one physical terminal device among various application
+
+processes, in a very efficient and flexible manner.
+
+
+          The most basic I/O functions are provided by the Start-I/O
+
+(SIO) primitive.  When a process makes an I/O request by means of SIO,
+
+it uses a control table called the I/O Request Block (IORB).  This table
+
+specifies all the information needed by the system or device driver to
+
+complete the I/O transaction.  The primary function of SIO is to
+
+
+
+
+                                   34
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+coordinate requests for devices; the IORB is enqueued on a per-device
+
+service queue and, if the device is idle, device action is initiated by
+
+calling special-purpose procedures called "device drivers."  The SIO
+
+primitive is asynchronous, allowing overlap of processing with I/O
+
+activity.  When the I/O transfer is complete, the invoking process is
+
+signaled with the opcode specified in the IORB and with the address of
+
+the IORB as the signal data.
+
+
+          Based on the SIO facility, MOS also provides four type of
+
+synchronous I/O primitives directed to the process's controlling device:
+
+
+     .  String input (SIN)
+
+     .  String output (SOUT)
+
+     .  Byte input (BIN)
+
+     .  Byte output (BOUT)
+
+
+          The string I/O primitives are called with a buffer address and
+
+length.  On return, the length is updated to reflect the actual number
+
+of bytes transferred.  The byte output primitive is passed an 8-bit
+
+character to output, and the input primitive returns an 8-bit character.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   35
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+B.   MOS Configuration Parameters     ___ _____________ __________
+
+
+     Several configuration parameters are available to the user for
+
+configuring a MOS kernel to meet his needs.  These parameters are
+
+grouped together into the $CNFIG and $KPARM macros, found in the MOSMAC
+
+macro library file.
+
+
+     The first group, found in the $CNFIG macro, is used to declare the
+
+type of hardware on which MOS is operating.  These flags are:
+
+
+P1140          Set to 1 if the processor is a PDP-11/40 or 11/34.
+
+P1120          Set to 1 if the processor is a PDP-11/20.
+
+P1103          Set to 1 if the processor is a PDP-11/03 or LSI-11.
+
+$NETDV         Type of network interface hardware.  Valid values are:
+
+
+     .  2--SRI 1822 interface.
+
+     .  3--DEC IMP-11A 1822 interface.
+
+
+     The second group, found in the $KPARM macro, controls the number
+
+and size of various system storage areas, and governs whether or not
+
+code is assembled to support various software options.  These equates
+
+are:
+
+
+NBLKS          Number of kernel system storage blocks allocated.
+               Recommended value is 30.
+
+STKLEN         Size of the run-time stack allocated for each process in
+               its PCT, in bytes.  Recommended value is 140.
+
+NUEMTS         Number of user EMT trap exits needed.  If no user EMTs
+               are used, NUEMTS should be set to 0 and code for the
+               $SEMTX primitive will not be assembled.
+
+
+
+                                   36
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+KF.PWR         Type of power-fail handler.  Valid values are:
+
+
+     .  0--Put trap-catcher in power-fail interrupt vector.  MOS can not
+        recover after power-fail because the program and data areas are
+        in volatile memory.
+
+     .  1--Halt processor on power-fail and restart on power
+        restoration.  MOS can not continue, the data area is in volatile
+        memory.  But MOS can be restarted, since the program area is in
+        nonvolatile memory.
+
+     .  2--Halt processor on power-fail and continue on power
+        restoration.  MOS can continue functioning because both the
+        program and data areas are in nonvolatile memory.
+
+     .  3--Halt processor on power-fail and enter internetwork bootstrap
+        program on power restoration.
+
+KF.DDT         Stand-alone debugging support.  Valid values are:
+
+
+     .  0--MOS not linked with DDT; all system error macro calls will
+        assemble as halt instructions and trap-catchers will be placed
+        in locations 0 through 376, octal.
+
+     .  1--MOS may be linked with DDT; all system error macro calls will
+        assemble as breakpoint (BPT) instructions and the contents of
+        the BPT, IOT, TRAP, and time-out trap vectors will not be
+        disturbed.
+
+KF.DBG         XNET debugging support.  Valid values are:
+
+
+     .  0--XNET debugging not supported; code to handle the extended
+        process management primitives will not be assembled.
+
+     .  1--XNET debugging supported; code to handle the extended process
+        management primitives will be assembled.
+               Note:  XNET debugging not currently supported.
+
+KF.PMT         Process preemption.  Valid values are:
+
+
+     .  0--No process will be preempted to run another process.
+
+     .  1--Selected processes can be preempted.
+
+
+
+
+
+                                   37
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+C.   MOS System Calls     ___ ______ _____
+
+
+     Access to MOS system primitives is through the emulator trap (EMT)
+
+instruction; the low-order 8 bits of this instruction indicate which
+
+function MOS is to perform.  A macro library (MOSMAC.SML) is available
+
+for defining these system calls and for generating the appropriate EMT
+
+instructions.  These macros will also generate the appropriate
+
+instructions for loading parameters into registers.
+
+
+     In the following sections, the calling sequence and interface to
+
+the various MOS kernel primitives are described.  The primitives are
+
+grouped by function into four classes:
+
+
+     .  Process management
+
+     .  Memory management
+
+     .  I/O management
+
+     .  Extended process management
+
+
+     1.   Process Management Primitives          _______ __________ __________
+
+
+          The basic entity of any modern, multiprogrammed OS system is
+
+the process.  This section describes the basic set of primitives
+
+provided for process management; a later section describes the optional
+
+process management functions oriented towards manipulating a process for
+
+the purpose of debugging it.
+
+
+
+
+
+
+
+
+                                   38
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title: $GAPID
+
+Function: Return the process ID of the caller.
+
+Called with:    Nothing
+
+Returned with:  R0--ID of calling process, in low byte
+
+Macro syntax:   $GAPID  <PID>
+
+
+          The GAPID primitive allows a process to obtain its process ID.
+
+A process ID is a small integer (8 bits) that uniquely identifies every
+
+process in the system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   39
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $GPSTS
+
+Function: Get specified process's current status.
+
+Called with:    R0--ID of process, in low byte
+
+Returned with:  R0--Process ID, in low byte
+                R1--Process status flags
+
+Macro syntax:   $GPSTS  <PID>
+
+
+          The GPSTS primitive provides the calling process with the
+
+status of any process in the system.  The flags returned are used
+
+internally by the OS and probably have little meaning to any user-level
+
+program.  The main use of this primitive is to determine if a process ID
+
+names a valid process; all other system primitives treat an invalid
+
+process ID as a fatal error.  If GTSTS is called with an invalid process
+
+ID, R0 will contain zero on return and the contents of R1 will be
+
+undefined.
+
+
+          The following status flags are currently returned in R1:
+
+
+B0--PS.FZN     Process is frozen.
+
+B1--PS.BPT     Process suspended at a breakpoint.
+
+B2--PS.IO      Process waiting for synchronous I/O completion.
+
+B3--PS.DET     Process suspended, waiting for a controlling device to be
+               attached.
+
+B4--PS.NPL     Process not at user-level, but inside kernel primitive.
+
+B5--PS.NDB     Process not being debugged.
+
+B6--PS.PMT     Process can be preempted.
+
+B7--PS.RDY     Process runnable and waiting for CPU.
+
+
+
+
+                                   40
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+Title:  $SGNLI
+
+Function: Signal a process with an event opcode and data.
+
+Called with:    R0--ID of process to signal, in low byte
+                    Event opcode, in high byte
+                R1--Signal data
+
+Macro syntax:   $SGNLI  <PID>,<OPCODE>,<DATA>
+
+
+          The SGNLI primitive is used as the basis for all interprocess
+
+communication in MOS.  A Message Queue Element (MQE) is allocated from
+
+system storage; the event opcode and signal data are copied into the
+
+MQE; the process ID of the caller is placed in the MQE; and the MQE is
+
+enqueued on the called process's message queue.  The MQE's are placed on
+
+this queue in strict temporal order; one of the various WAIT primitives
+
+can be used to obtain signals sent to a process.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   41
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $WAIT
+
+Function: Block process and wait for any event signal.
+
+Called with:    Nothing
+
+Returned with:  R0--Event opcode, in low byte
+                    Signaling Process's ID, in high byte
+                R1--Signal data
+
+Macro syntax:   $WAIT
+
+
+          The WAIT primitive is used to obtain event signals sent to the
+
+calling process by other processes.  If the message event queue is
+
+empty, indicating no signals awaiting, the process is marked as IDLE; if
+
+the queue is nonempty the process is marked as RUNNABLE.  In either
+
+case, the scheduler is entered, and the highest priority runnable
+
+process gets control of the CPU.  When the calling process next gets
+
+control of the CPU, its message queue is again inspected; if still empty
+
+the process reverts to the IDLE state.  If nonempty, the MQE at the head
+
+of the queue is removed; the signaling process ID, event opcode, and
+
+data copied into registers 0 and 1; and the MQE returned to the system
+
+storage pool.  Note, event signals are removed in strict temporal
+
+ordering, with no discrimination based on event opcode.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   42
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $WAITS
+
+Function: Block process and await signal with specified event opcode.
+
+Called with:    R0--Desired event opcode, in low byte
+
+Returned with:  R0--Event opcode, in low byte
+                    Signaling process's ID, in high byte
+                R1--Signal data
+
+Macro syntax:   $WAITS  <OPCODE>
+
+
+          The WAITS primitive operates in a manner similar to WAIT.
+
+However, rather than returning the first event signal on the message
+
+queue, the first event signal with a matching opcode is returned.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   43
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $WAITM
+
+Function: Block process and await signal of a specified class.
+
+Called with:    R0--Class identifier flags
+
+Returned with:  R0--Event opcode, in low byte
+                    Signaling process's ID, in high byte
+                R1--Signal data
+
+Macro syntax:   $WAITM  <FLAGS>
+
+
+          The WAITM primitive behaves much like the WAITS primitive;
+
+however, the condition which defines the desired event signal is more
+
+complex.  For the purposes of this primitive, the event opcode is
+
+assumed to be subdivided into two 4-bit fields.  The low-order 4 bits
+
+defines the "class" to which the opcode belongs.  A value of 0 indicates
+
+the first class; 1, the second class; and so on, for a total of 16
+
+classes.  The 16-bit class identifier passed in R0 defines a set of
+
+classes of signals satisfying the primitive's match condition.  If bit 0
+
+of R0 is asserted, any signal from the first class (low 4 bits zero)
+
+will satisfy the match condition; if bit 1 is asserted, any signal from
+
+the second class will also satisfy the match condition; and so on,
+
+allowing for all 16 classes to be specified.  The event signal with the
+
+first opcode, whose class is a member of the match condition set, is
+
+returned to the caller.
+
+
+
+
+
+
+
+
+
+
+
+
+                                   44
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     2.   Memory Management Facilities          ______ __________ __________
+
+Title:  $AVS
+
+Function: Allocate a block of storage
+
+Called with:    R0--Amount of storage required, in bytes
+
+Returned with:  R0--Amount allocated, in bytes
+                R2--Address of the storage block
+
+Macro syntax:   $AVS   <AMOUNT>
+
+
+          The $AVS primitive is used to allocate storage from the system
+
+buffer pool.  The primitive currently will return only the amount
+
+requested; if the space is not available, the process will be IDLED
+
+waiting for the storage to become available.  Note that this may cause
+
+deadlocks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   45
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $FVS
+
+Function: Release a block of storage
+
+Called with:    R0--Size of the storage block, in bytes
+                R2--Address of the storage block
+
+Macro syntax:   $FVS   <SIZE>,<ADDR>
+
+
+          The $FVS primitive is used to release storage obtained from a
+
+$AVS call.  The primitive checks verifies that the address of the
+
+storage block lies within the bounds of the system storage pool and
+
+calls a BUGHLT if the test fails.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   46
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     3.   I/O Facilities          ___ __________
+
+
+          To relieve the burden of physical device management from user
+
+programs, MOS contains I/O facilities that provide for device
+
+initialization, request queueing, and synchronous or asynchronous I/O
+
+transfers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   47
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $SIO
+
+Function:       Start asynchronous I/O transfer.
+
+Called with:    R0--Address of IORB
+
+Macro syntax:   $SIO    <IORB ADDRESS>
+
+
+          The $SIO primitive forms the basis of the MOS I/O structure.
+
+Information needed to control the I/O transfer is contained in an IORB.
+
+The IORB contains the "name" of the device, signal opcode to be used on
+
+I/O completion, the buffer address and size; on request termination, the
+
+number of bytes transferred and the transfer status are written into the
+
+IORB by the device drivers.  When the I/O operation finishes, the
+
+initiating process is signaled with the event opcode from the IORB and
+
+with the address of the IORB as the signal data.
+
+
+          The caller must supply the device name (IRDEV), completion
+
+signal opcode (IROPC), buffer address (IRUVA), and buffer length (IRBR);
+
+the system will fill in the caller's process ID and supply the transfer
+
+status (IRSTA) and bytes transferred (IRBX) on I/O completion.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   48
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $SOUT
+
+Called with:    R0--Address of IORB
+
+Function:       Synchronous string output
+
+Called with:    R0--Address of string to transfer
+                R1--Length of string
+
+Macro syntax:   $SOUT   <ADDR>,<LENGTH>
+
+
+          $SOUT provides a means to output a text string to the
+
+"controlling" terminal of a process.  The device number of the
+
+controlling terminal can be defined at assembly time and changed
+
+dynamically at run-time (see $SPRIO).  This primitive is synchronous;
+
+the transfer will be completed before the calling process gains control
+
+again.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   49
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $SIN
+
+Function:       Synchronous string input
+
+Called with:    R0--Address of string buffer
+                R1--Length of buffer
+
+Returned with:  R0--Address of string
+                R1--Number of bytes transferred
+
+Macro syntax:   $SIN    <ADDR>,<LENGTH>
+
+
+          $SIN provides a means to input a text string from the
+
+controlling terminal of a process.  This primitive is synchronous; the
+
+transfer will be completed before the calling process gains control
+
+again.  For terminal devices, the SIN will usually return after a
+
+character is typed by the user; however, if characters are buffered in
+
+the system ring buffer, then they are returned to the caller.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   50
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $BOUT
+
+Function:       Synchronous character output
+
+Called with:    R0--Character to output, in low byte
+
+Macro syntax:   $BOUT   <CHARACTER>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   51
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $BIN
+
+Function:       Synchronous character input
+
+Called with:    Nothing
+
+Returned with:  R0--Input character, in low byte
+
+Macro syntax:   $BIN
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   52
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $SPRIO
+
+Function:       Set process's primary I/O devices
+
+Called with:    R0--Process ID, in low byte
+                R1--Primary input device
+                R2--Primary output device
+
+Returns with:   R0--Process ID, in low byte
+                R1--Primary input device
+                R2--Primary output device
+
+Macro syntax:   $SPRIO  <PID>,<INPUT>,<OUTPUT>
+
+
+          $SPRIO provides for dynamic control over a process' primary
+
+input and output devices.  If called with a primary input or output
+
+device of -1, the current setting is unchanged and the current primary
+
+I/O device returned.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   53
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $STI
+
+Function:       Simulate terminal input
+
+Called with:    R0--Device name
+                R1--Input character, in low byte
+
+Macro syntax:   $STI    <DEV>,<CHAR>
+
+
+          The $STI primitive is used to insert characters into a
+
+controlling TTY device by simulating terminal input.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   54
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     4.   Extended Process Management Facilities          ________ _______ __________ __________
+
+
+          The extended process management facilities provide functions
+
+needed for real-time debugging of MOS application processes.  These
+
+functions are specifically directed to supporting the XNET debug
+
+process.  Code for handling the primitives documented in the section is
+
+only assembled if the KF.DBG conditional assembly parameter is set to 1
+
+in the $KPARM macro.
+
+
+          The extended process management facilities are still
+
+experimental and are subject to change.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   55
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $SEXIT
+
+Function:       Set process breakpoint signal
+
+Called with:    R0--ID of process being breakpointed, in low byte
+                    Event opcode for breakpoint signal, in high byte
+
+Macro syntax:   $SEXIT  <PID>,<OPCODE>
+
+
+          The $SEXIT primitive is used to initiate debugging of a MOS
+
+process.  After verifying that the process is not already being debugged
+
+and that the calling process is not trying to debug itself, the PS.NDB
+
+flag of the process status word is cleared; a system storage block is
+
+allocated to contain the process-level register state; and the calling
+
+process's ID and the breakpoint event signal are stored into the
+
+debugged process's PCT.  Before a breakpoint can be serviced, or a
+
+process's registers examined or modified, the $SEXIT call must be used
+
+to indicate that the process is being debugged.
+
+
+          When a debugged process calls a MOS kernel primitive, its
+
+register values are stored into a special status-save block allocated by
+
+the SEXIT call.  System calls for reading and writing into a process's
+
+registers access this status block rather than the normal register
+
+status-save area contained in the PCT; thereby manipulating the outer-
+
+level register context instead of the values used inside system calls.
+
+
+
+
+
+
+
+
+
+
+
+
+                                   56
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $REXIT
+
+Function:       Remove process breakpoint signal.
+
+Called with:    R0--Debugged process's ID, in low byte
+
+Macro syntax:   $REXIT  <PID>
+
+
+          The $REXIT primitive terminates debugging of a process.  After
+
+verifying that the calling process was debugging, the PS.NDB flag is
+
+set; the special register status-save area is return to the system
+
+storage pool; and the PCTDBG of the debugged process's PCT is set to
+
+zero, indicating it is not being debugged.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   57
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $GPREG
+
+Function:       Get contents of debugged process's register.
+
+Called with:    R0--Process ID, in low byte
+                    Register identifier, in high byte
+
+Returned with:  R1--Contents of register
+
+Macro syntax:   $GPREG  <PID>,<REG ID>
+
+
+          The GPREG primitive is used to read the contents of a debugged
+
+process's registers.  It is called with a process ID and register
+
+identifier.  The register identifier specifies the register to be read;
+
+a value of zero through six indicates the debugged process's R0 through
+
+R6, respectively; a value of seven, the process's program counter (PC);
+
+and a value of eight, the process's program status (PS).  The inner
+
+system registers can be examined by using a register identifier in the
+
+range 16 through 24; register 16 identifies the system's R0 and 24
+
+identifies the system's program status register.  If the calling process
+
+is not debugging the process specified in R0, the register value is not
+
+returned and R1 is not changed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   58
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:          $SPREG
+
+Function:       Set debugged process's register to new value.
+
+Called with:    R0--Debugged process's ID, in low byte
+                    Register indicator, in high byte
+                R1--New value
+
+Macro syntax:   $SPREG  <PID>,<REG ID>,<VALUE>
+
+
+          The SPREG primitive is used to change the value of a debugged
+
+process's registers.  The register indicator is as defined above in
+
+GPREG.  If the calling process is not debugging the process specified in
+
+R0, the call returns with unexecuted.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   59
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+D.   Debugging MOS Processes     _________ ___ _________
+
+
+     1.   Process Status Information          _______ ______ ___________
+
+
+          Various status information is maintained in MOS which is
+
+useful in debugging processes.  The most important is the identity of
+
+the currently running process which is stored in the PID location.
+
+
+     2.   MOS Error Printouts          ___ _____ _________
+
+
+          When an error condition is detected by any MOS primitive, the
+
+BUGHLT system primitive is called and an error message text string is
+
+passed to it; this error text string is typed out on the system console
+
+terminal preceded by the "BUGHLT:" message.  The BUGHLT primitive is
+
+invoked by a mechanism separate from the normal MOS primitive
+
+dispatching and uses polled I/O routines separate from the normal MOS
+
+I/O system to output its message.  If the KF.DDT configuration parameter
+
+is 1 and the MOS kernel is linked with DDT, DDT will gain control and
+
+allow the user to examine the system state.  Since the entry to DDT is
+
+made via a simulate breakpoint, it is possible to continue the system
+
+with the "proceed" command to DDT.  However, in most cases, the BUGHLT
+
+errors are fatal and the system must be restarted.
+
+
+          The following BUGHLT messages are produced by the MOS kernel:
+
+
+STACK OVERFLOW      The system maintains a stack for each process in the
+                    process' process control table (PCT).  This stack is
+                    used by the system to store context information,
+                    provide return linkage for subroutine calls, and
+                    should be used by application programs in the usual
+                    LSI-11 manner.  Since the LSI-11 hardware does not
+
+
+                                   60
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+                    provide stack overflow indication, the scheduler,
+                    before scheduling a process, determines if the
+                    process' stack has overflowed by checking the
+                    contents of a guard-word stored at the top-most
+                    location of the stack; if the contents of this word
+                    have been altered, a stack overflow is assumed.  A
+                    stack overflow usually implies a program error, such
+                    as indefinitely recursive subroutine calls.
+                    However, is it possible for a correctly running
+                    program to run out of stack space if it: stores many
+                    parameters on the stack, as is the usual practice of
+                    compiler-generated code, or if it invokes a deeply
+                    nested or recursive subroutine.  The only solution
+                    is to reassemble the system with more stack space
+                    allocated.
+
+UND EMT             A call has been made to an EMT number which has been
+                    allocated but for which a handler has not been
+                    provided.  This may happen if the software attempts
+                    to use MOS primitives which are defined but were not
+                    assembled into the current system.
+
+INV EMT             A call has been made to an EMT number which is
+                    invalid, i.e. has not been defined.
+
+BAD PID             A MOS primitive was supplied a bad process ID by the
+                    caller.
+
+BAD DCT NDX         The device number in the I/O request block supplied
+                    to an I/O primitive exceeds the range of device
+                    numbers assembled into the system.
+
+NO KERNEL STORAGE   The storage allocated to the kernel for use in
+                    maintaining message and timer queues for the various
+                    processes has been exhausted.  This error usually
+                    implies that some process is not removing elements
+                    from its message queue because: it is frozen, it is
+                    awaiting a specific opcode, or the signaller is
+                    generating signals much faster than the messages can
+                    be processed.  As the number of running processes
+                    increase, the amount of storage allocated to the
+                    kernel must also be increased.
+
+BAD BUFFER ADDR     An attempt was made to release a block of storage
+                    via the FVS primitive that was not allocated from
+                    the system free storage pool.
+
+
+
+
+
+
+                                   61
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+E.   MOS System Tables and Data Structures     ___ ______ ______ ___ ____ __________
+
+
+     1.   Process Control Table (PCT)          _______ _______ _____ _____
+
+
+          For each process, process-private information is maintained in
+
+the process control table.  The following is a description of the PCT
+
+entries:
+
+
+PCTLNK         (16 bits)--Address of the next PCT in the scheduler ready
+               queue.
+
+PCTPID         (8 bits)--ID of the process described by this PCT.
+
+PCTFLG         (8 bits)--Process status flags.
+
+PCTMQH         (16 bits)--Event message queue head pointer.
+
+PCTMQT         (16 bits)--Event message queue tail pointer.
+
+PCTSP          (16 bits)--Address of stack pointer when process is
+               block.
+
+PCTREG         (16 bits)--Address of special register status-save area
+               used while debugging a process.
+
+PCTDBG         (16 bits)--Process ID in the low byte and breakpoint
+               event opcode in the high byte to be used when the process
+               executes a breakpoint (BPT) instruction.
+
+PCTENT         (16 bits)--Process initialization transfer address.
+
+PCTPRI         (16 bits)--Primary input device number.
+
+PCTPRO         (16 bits)--Primary output device number.
+
+PCTIBR         (16 bits)--IORB used in synchronous I/O calls.
+
+
+
+
+
+
+
+
+
+
+
+                                   62
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     2.   Device Control Table (DCT)          ______ _______ _____ _____
+
+
+          Control information about each MOS device is maintained in a
+
+device-private device control table (DCT).  The fields of the DCT are:
+
+
+DCTIHX         (16 bits)--Interrupt handler transfer jump-subroutine
+               instruction.
+
+DCTIHA         (16 bits)--Interrupt handler address.
+
+DCTQH          (16 bits)--Address of current IORB being serviced.
+
+DCTQT          (16 bits)--Address of last IORB to be serviced.
+
+DCTLNK         (16 bits)--Address of an associated DCT.  Used to link
+               the input and output DCTs of terminal-type devices.
+
+DCTIVA         (16 bits)--Interrupt vector transfer address.
+
+DCTINA         (16 bits)--Address of device initialization routine which
+               is called prior to handling the first I/O request for
+               that device.
+
+DCTCSR         (16 bits)--Device command and status register address
+
+DCTBUF         (16 bits)--Device data buffer address
+
+DCTDVA         (16 bits)--Address of the device driver transfer
+               initialization subroutine.
+
+DCTFLG         (16 bits)--Device control flags.  Currently defined
+               values are:
+
+
+               B0--DF.HLD     Output to be held, used by terminal-type
+                              devices.
+
+               B1--DF.STP     Output being held, used by terminal-type
+                              devices.
+
+               B15--DF.OFL    Device off-line.
+
+DCTUVA         (16 bits)--Buffer address of current byte, used by the
+               device driver.
+
+DCTBR          (16 bits)--Byte remaining count, used by the device
+               driver.
+
+
+                                   63
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+DCTCRF         (8 bits)--Carriage return padding count.
+
+DCTRC          (8 bits)--Number of bytes in ring buffer.
+
+DCTFNT         (16 bits)--Address of start of the ring buffer.
+
+DCTEND         (16 bits)--Address of the end of the ring buffer, plus 1.
+
+DCTHD          (16 bits)--Address of the next byte to be removed from
+               the ring buffer.
+
+DCTTL          (16 bits)--Address of the location to store the next
+               input byte.
+
+
+     3.   I/O Request Block (IORB)          ___ _______ _____ ______
+
+
+          All I/O transactions are described to the device driver via an
+
+IORB.  The IORB contains the following information:
+
+
+IRLINK         (16 bits)--Used by the system to link IORB together on
+               the DCT service queue.
+
+IRDEV          (16 bits)--Device name.
+
+IROPC          (8 bits)--Signal opcode to use on I/O request completion.
+
+IRPID          (8 bits)--Process ID of initiating process.
+
+IRUVA          (16 bits)--Address of start of user buffer.
+
+Padding        (16 bits)
+
+IRBR           (16 bits)--Requested byte count.
+
+IRSTA          (16 bits)--Status of I/O operation.
+
+IRBX           (16 bits)--Number of bytes transferred.
+
+Padding        (32 bits)
+
+
+
+
+
+
+
+
+
+                                   64
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+F.   I/O Device Driver Linkage     ___ ______ ______ _______
+
+
+
+
+                        VIII   TIU I/O UTILITIES
+
+
+     In addition to the basic I/O functions provided by MOS, the TIU
+
+provides applications programs with a set of higher-level I/O functions
+
+and conversion routines.  These routines perform the tasks of:
+
+
+     (1)  command line editing
+
+     (2)  command parsing
+
+     (3)  time and number conversions for both input and output.
+
+Centralizing these functions saves memory space by:
+
+
+     (1)  eliminating redundant subroutines
+
+     (2)  saves programming time
+
+     (3)  presents a more uniform interface to the user.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   65
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                       IX   DISPATCH/SPP PROCESS
+
+
+     The Dispatch/SPP process (DSP) performs the function of
+
+multiplexing packets received from the 1822 interface to logical
+
+processes in the TIU.  The physical stream of packets received from the
+
+1822 interface is essentially broken up into several logical streams
+
+established by processes.  For outgoing packets, the several logical
+
+streams are merged into one stream and sent out the 1822 interface.  For
+
+SPP type streams or connections, DSP performs the additional functions
+
+of sequencing packets received and providing reliable reception of
+
+packets sent by using end-to-end acknowledgments.  For transparent type
+
+connections, DSP simply passes packets from a process to the 1822
+
+interface and dispatches packets received to processes with no
+
+sequencing performed on the connection.  Also no reliability reception
+
+of packets is insured.
+
+
+     The DSP process also collects statistics on all connections that
+
+are open.  These statistics include various tallies and histograms
+
+described in Section .
+
+
+
+
+
+
+
+
+
+
+
+
+                                   66
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+A.   DSP System Calls     ___ ______ _____
+
+
+     This section describes the program interface calls to SPP
+
+implemented in the LSI-11 TIU.  Each primitive called assumes parameters
+
+in registers, and returns a return code and connection ID in register
+
+zero.  If the status code shows no error, that is it is zero, then the
+
+calling process will be signaled upon completion of the requested
+
+action.  Otherwise the requested action is not initiated and no signal
+
+will be given to the calling process.  For the cases when a signal is
+
+returned, a return code is given indicating the result of the initiated
+
+action.  For example, a process which requests to open a connection
+
+receives a signal when the connection is successfully open or when it
+
+fails to open because of a time-out.
+
+
+     Each primitive described in the following sections list the
+
+possible return codes and their names.  The equates for these return
+
+codes can be defined by calling the $DFDSC macro in the DSPTBL.SML macro
+
+definition file.
+
+
+     In order to allow calling of DSP functions from programs that may
+
+be cross-net loaded (i.e., non-resident), the DSP primitives are invoked
+
+by means of the EMT trapping mechanism.  EMT numbers are assigned in the
+
+TIU macro library (DSPMAC.SML); normally, DSP functions will be invoked
+
+by macro-generated expansions.
+
+
+
+
+
+
+
+
+                                   67
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $PROPN
+
+Function: Open SPP or transparent connection
+
+Called with:    R0--Open complete signal opcode, in low byte
+                    Open option flags, in high byte
+                R1--Address of the match descriptor block
+
+Returned with:  R0--Connection ID, in low byte
+                    Return code, in high byte
+
+Macro syntax:   $PROPN  <FLAGS>,<OPCODE>,<ADDR>
+
+
+     The OPEN primitive accepts a pointer to a unique match descriptor
+
+and initiates the OPENing of a connection.  The procedure for opening
+
+the connection may consist of a full ETE handshake (for SPP protocol) or
+
+may simply consist of defining dispatching information in the SPP
+
+dispatch table (transparent connections).  A connection is "transparent"
+
+if the caller so specifies by setting of flags in R0.  An event op-code,
+
+specified in R0, is used to signal the calling process upon completion
+
+of the OPEN operation.
+
+
+     A "match descriptor" is used to perform dispatching of incoming
+
+packets.  A match descriptor consists of a 6-word block containing a 3-
+
+word mask and a 3-word compare value.  The equates for the match
+
+descriptor block can be defined by calling the $DFMDB macro in the
+
+DSPTBL.SML macro definition file.  The 3-word mask is bit-wise ANDed
+
+with the SOURCE, DESTINATION, and CONTROL words of PRNET packets and the
+
+result is compared to the compare value.  If all three compare equally,
+
+the packet is dispatched to a receiving process (by means of a signal).
+
+Thus, a process may indicate that it wishes to receive all packets
+
+
+
+
+                                   68
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+having a certain DESTINATION, or may receive all packets having TYPE =
+
+ROP (or TOP).  If a packet is received from the PRNET and no match
+
+condition exists, then the packet is discarded.
+
+
+     When a connection is opened, several option flags may be specified
+
+in the high byte of R0.  These option flags are listed below:
+
+
+B0--DF.TRN     If equal to one, this bit specifies that the connection
+               should be transparent, otherwise the connection is
+               assumed to be SPP.
+
+B1--DF.NTP     If equal to one, this bit specifies that no TOP
+               processing is wanted for this connection; otherwise DSP
+               will signal the TOP process to periodically send a TOP
+               for the connection.
+
+B2--DF.LSN     If equal to one, this bit specifies that the connection
+               should be put in a listening state.  For a transparent
+               connection the connection remains listening until a
+               packet is received which matches the match descriptor
+               block specified for the connection.  The foreign ID
+               compare word is then set equal to the value of the
+               foreign ID in the packet received.  The foreign ID mask
+               is also set to all ones.  For an SPP connection no SYN is
+               sent until one is received which is dispatched to this
+               connection.  The foreign ID is set to the value received
+               in the packet and the foreign ID mask is set to all ones.
+
+B3--DF.ARQ     If equal to one, this bit specifies that all packets sent
+               on this connection should have the acknowledgment
+               requested (ARQ) bit set in the header.  This option is
+               forced for SPP connections.
+
+B4--DF.DFC     If equal to one, this bit specifies that DSP should use
+               the following default values for the control mask word
+               and the control compare word in the match descriptor
+               block.  For SPP connections DSP sets the SPP bit in the
+               function field and sets the bits in the type field to all
+               ones for the control mask word.  The compare word has the
+               SPP bit of the function field set and the "information
+               type packet" bits set in the type field.  These values
+               provide for normal dispatching of the information type
+               SPP connections.  For transparent connections the control
+               mask word has the function and type field set to all
+               ones.  The compare word has the function field set for
+
+
+                                   69
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+               "non-connection" and the type field set for "information
+               type packets."  These values provide for dispatching of
+               transparent information streams such as used by TCP.
+
+B5--DF.HSP     If set, this bit specifies that the packet header will be
+               provided by the user process for packets that are sent on
+               the connection.  In this case DSP will not set any values
+               in the packet header.  This bit may only be specified for
+               transparent connections.
+
+B6--DF.SNK     If specified then DSP will sink all packets received on
+               the connection.  The packets received are released and
+               not passed on to the user process.
+
+B7--DF.RFL     This bit specifies that DSP should exchange local and
+               foreign IDs and complement the direction bit on all
+               packets received on the connection.  This bit can only be
+               specified for transparent connections.
+
+
+     To use these bit definitions for specifying the option flags for
+
+$PROPN, the $DFDOF macro can be called which is defined in the
+
+DSPTBL.SML macro definition file.
+
+
+     The OPEN primitive returns an 8-bit connection ID, which is used to
+
+reference the connection once it is open.  This CONNID is used by all of
+
+the other SPP primitives in reference to an outstanding connection.
+
+
+     OPEN returns an 8-bit return code which is non-zero and negative if
+
+an error occurred which indicates the OPEN operation was not initiated.
+
+In this case the user process is not signaled.  Possible error codes are
+
+listed below:
+
+
+SC.NST         No storage available for allocation of a connection
+               control block (CCB) or the maximum number of connections
+               allowed has been exceeded.
+
+SC.COP         Connection already open.  This occurs if the same match
+               descriptor block occurs on another connection that is
+               open.
+
+
+                                   70
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     If no errors occur, a request to open a transparent connection
+
+results in an immediate signal indicating the operation is complete; a
+
+request to open a normal SPP connection results in a signal when the
+
+connection is officially "open" (i.e., when an ACK has been received for
+
+the SPP "OPEN" packet) or when the attempt fails after a time-out.  Upon
+
+completion of the OPEN, the originating process receives the event
+
+opcode requested at the time of the $PROPN call in the low byte of R0.
+
+A return code is given in the high byte of R0 which is non-zero and
+
+negative if an error occurred.  The possible error code is listed below:
+
+
+SC.RTT         Retransmission time-out occurred for the open packet of
+               an SPP connection.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   71
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $PRRCV
+
+Function:
+
+Called with:    R0--Connection ID, in low byte
+                    Receive opcode, in high byte
+
+Returned with:  R0--Connection ID, in low byte
+                    Return code, in high byte
+
+Macro syntax:   $PRRCV  <OPCODE>,<CONNID>
+
+
+     The RECEIVE primitive is used to request reception of a packet from
+
+the SPP process using a connection that has been opened with the OPEN
+
+primitive.  The RECEIVE primitive returns immediately to the caller with
+
+a return code in the high byte of R0 which is negative if an error has
+
+occurred.  The possible error codes are described below:
+
+
+SC.NXC         No connection exists for the connection ID given in the
+               primitive call.
+
+SC.CLR         The connection has been closed remotely (SPP only) and a
+               close has been sent but no ACK has been received.  There
+               are no more packets outstanding to be received and the
+               connection will automatically be closed by DSP.
+
+SC.MXR         The maximum number of outstanding received allowed for a
+               connection has been exceeded.  The request is ignored.
+
+SC.CLD         The connection is being closed.  That is the $PRCLS
+               primitive has been called so no more receives are
+               allowed.
+
+
+     If no error is returned then the user process will be signaled when
+
+a packet is received.  For SPP connections the user process will only be
+
+signaled when the packet is received in sequence.  Also for SPP
+
+connections the window size is set to the number of receives outstanding
+
+plus one.
+
+
+
+                                   72
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     The event message received from the signal contains the opcode
+
+specified in the primitive call in the low byte of R0.  R1 contains the
+
+address of the packet descriptor for the packet received.  The status of
+
+the packet received is indicated by the return code set in the high byte
+
+of the PDSTAT word in the packet descriptor.  If the packet is received
+
+normally, then the return code is zero.
+
+
+     For SPP connections it is possible for the return code to be SC.CLR
+
+which indicates a close has been received and that the packet may or may
+
+not have any data (i.e., it could be a header-only packet).  No more
+
+packets will follow and to close the connection the user process must
+
+execute a $PRCLS primitive call.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   73
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $PRSND
+
+Function:
+
+Called with:    R0--Connection ID, in low byte
+                R1--Address of packet descriptor (IORB)
+
+Returned with:  R0--Connection ID, in low byte
+                    Return code, in high byte
+
+Macro syntax:   $PRSND  <CONNID>,<ADDR>
+
+
+     The SEND primitive causes a packet to be sent on a connection.
+
+Upon return from the call, the high byte of R0 contains a return code.
+
+If an error has occurred then the following return codes are possible:
+
+
+SC.CNO         The connection has not been completely opened yet.  The
+               call is ignored.
+
+SC.NXC         No connection exists for the connection ID specified in
+               R0.
+
+SC.CLD         The connection has been closed remotely.  To completely
+               close the connection, the $PRCLS primitive must be
+               called.
+
+
+     If the return code shows no error (i.e., it is zero), then the
+
+packet is passed to the 1822 interface I/O driver for transparent
+
+connections.  For SPP connections, the packet is passed to the DSP
+
+process for reliable transmission.  For transparent connections, the
+
+user process is signaled by the 1822 I/O driver when the packet has been
+
+transmitted over the 1822.  For SPP connections the user process is
+
+signaled when the packet has been sent reliably (i.e., an ACK has been
+
+received for the packet) or when the packet has been retransmitted the
+
+maximum number of times.  In either case, the calling process is
+
+
+
+
+                                   74
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+signalled with the op code specified in the PDOP word in the packet
+
+descriptor.  The data word from the signal contains the address of the
+
+packet descriptor.
+
+
+     Returned in the PDSTAT word of the packet descriptor is a return
+
+code.  A zero indicates no errors.  If negative, an error has occurred
+
+which is listed below:
+
+
+SC.RTT         The maximum number of retransmissions has been exceeded.
+               The connection is closed up automatically by DSP so no
+               $PRCLS call is necessary.  This error can only occur for
+               SPP connections.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   75
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+Title:  $PRCLS
+
+Function:
+
+Called with:    R0--Connection ID, in low byte
+
+Returned with:  R0--Connection ID, in low byte
+                    Return code, in high byte
+
+Macro syntax:   $PRCLS  <CONNID>
+
+
+     The CLOSE primitive is used to close down a connection.  If the
+
+return code indicates no errors, then a close packet is sent reliably
+
+for SPP connections.  After the ACK is received for the close packet the
+
+connection is closed and the user process is signaled.  For transparent
+
+connections the connection is closed immediately and the user process is
+
+signaled.  If one of the following errors is returned, then the call is
+
+ignored:
+
+
+SC.CNO         The connection is not open yet.  Applies to non-listening
+               SPP connections only.
+
+SC.NXC         The connection ID specified in the call does not match
+               any open connection.
+
+SC.CLD         The connection has been closed remotely and DSP is
+               waiting for an ACK to the close already sent.
+
+
+     The user process is signaled with the opcode specified when the
+
+connection was opened.  The data word contains a return code in the high
+
+byte.  If it is zero the connection was closed properly if it was SC.RTT
+
+then the ACK for the close packet sent on the SPP connection was never
+
+received and the connection was closed anyway.
+
+
+
+
+
+
+                                   76
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+B.   Application Notes     ___________ _____
+
+
+     Packets are passed between the user process and DSP by means of a
+
+packet descriptor, which is described below.  The DSP allocates buffers
+
+for incoming packets and hands them off to user processes when it
+
+performs the signal terminating a RECEIVE operation.
+
+
+     It is possible for the implementation to allow multiple RECEIVEs or
+
+SENDS on a connection before the requested operation is complete.
+
+
+     For transparent connections it will be necessary for the DSP to
+
+buffer incoming packets in advance of RECEIVEs by the requesting
+
+process.  A limit may be placed upon the amount of buffering that is
+
+performed for each transparent connection; packets exceeding the
+
+buffering limit may be discarded by DSP.
+
+
+     1.   Data Structures          ____ __________
+
+
+          The following sections summarize the data structures that are
+
+used within the DSP process.  To define the equates for the
+
+displacements into each data structure a macro in DSTBL.SML can be
+
+called.  For the match descriptor block $DFMDB is called, for the packet
+
+descriptor $DFPKD is called, for the packet header definitions $DFHDR is
+
+called, and for the connection control block $DFCCB is called.
+
+
+
+
+
+
+
+                                   77
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          a.   Match Descriptor               _____ __________
+
+
+               The match descriptor block contains the three mask words
+
+and the three compare words passed to the $PROPN primitive.
+
+
+MDLCLM         Local ID mask word.
+
+MDLCLD         Local ID compare word.
+
+MDFGNM         Foreign ID mask word.
+
+MDFGNC         Foreign ID compare word.
+
+MDCTLM         Control mask word.
+
+MDCTLC         Control compare word.
+
+
+          b.   Packet Descriptor               ______ __________
+
+
+               The packet descriptor contains information relating to a
+
+particular packet inside the TIU and includes a pointer to the actual
+
+packet buffer.  The packet descriptor (PD) is effectively a "handle" on
+
+the packet, and may be passed from one TIU process to another (by
+
+interprocess signals, for example).
+
+
+               The packet descriptor is described below:
+
+
+PDLINK         Link word used by the I/O system to enqueue requests for
+               a particular device.  This word is set by the I/O system
+               during an $SIO call.
+
+PDUNIT         Unit number which specifies which device to be used for
+               an I/O request.  The word is set by DSP.
+
+PDOP           Event op code for signalling completion of an I/O
+               request.  The low byte of this word should be set before
+               issuing a $PRSND primitive.
+
+
+
+
+                                   78
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+PDADDR         Packet buffer address.  This word contains the address of
+               the header of a packet.  This word must be set before
+               calling $PRSND.  This word is set by DSP for packets
+               received.
+
+PDFLAG         Option flag word which is currently not used.
+
+PDPKLN         Packet length is the number of bytes which includes the
+               header and the text.
+
+PDSTAT         Upon being signalled for I/O completion the low byte
+               contains a return code set by the I/O system.  The high
+               byte contains a return code set by DSP.
+
+PDBX           This word contains the bytes transferred upon completion
+               of an I/O request.
+
+PDRTX          This word is used by DSP to link packets that are on a
+               particular connection's retransmission queue.
+
+PDCCB          For SPP connections DSP sets this word to point to the
+               connection control block when the packet is sent to the
+               1822 interface.
+
+
+               The packet descriptor, shown above, contains all
+
+information needed to perform packet I/O.  (The packet descriptor is
+
+actually an IORB that is used for input or output to the 1822 interface
+
+by way of the MOS $SIO call described above.)
+
+
+               The PDFLAG field of the packet descriptor is used to
+
+indicate special handling of the packet at the I/O driver level.  This
+
+flag word currently contains a single flag bit (bit 0), which indicates
+
+that the packet should be time-stamped in the first two words of the
+
+packet text field upon arrival from the 1822 interface (see below).
+
+
+
+
+
+
+
+
+
+                                   79
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          c.   Connection Vector Table               __________ ______ _____
+
+
+               The connection vector table ($CVTBL) is a linear list of
+
+addresses pointing to a connection control block (CCB).  This table is
+
+indexed by the connection ID (CONNID) on each primitive call to arrive
+
+at the address of the CCB.  The first word contains the maximum CONNID
+
+possible which also indicates how many words that follow.  The following
+
+words are then either zero if the connection corresponding to that word
+
+is closed or it contains a CCB address if the connection has been
+
+opened.
+
+
+          d.   Connection Control Block               __________ _______ _____
+
+
+               DSP maintains a connection control block for each
+
+connection in the TIU.  These control blocks contain dispatch
+
+information and statistics information that is described below:
+
+
+CLCLMK         Local ID mask word from the match descriptor block.
+
+CLCLID         Local ID compare word.
+
+CFGNMK         Foreign ID mask word.
+
+CFGNID         Foreign ID compare word.
+
+CCTLMK         Control mask word.
+
+CCTLWD         Control compare word.
+
+CVTPTR         Pointer to the word in the connection vector table which
+               contains the address of this CCB.
+
+CONNID         Connection ID for this connection.
+
+COPFLG         Option flag byte set from the options flags specified at
+               open time.
+
+
+
+                                   80
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+CURPID         Process ID of the user process for this connection.
+
+CUROPC         Op code used for open and close signals.  Specified at
+               open and close time.
+
+CSTATE         Connection state word which has the following bit
+               definitions:
+
+
+               B0--ST.OPS     An open packet has been sent but no
+                              acknowledgment has been received.  SPP
+                              connections only.
+
+               B1--ST.OPA     An ACK has been received for the open
+                              packet sent.  The send side of the
+                              connection is open.
+
+               B2--ST.CLS     A close packet has been sent and no ACK
+                              has been received for it.
+
+               B3--ST.ROP     An open packet has been received.
+
+               B4--ST.RCR     A close packet has been received and hand
+                              off to the user process.
+
+               B5--ST.ORT     The one-round-trip time delay timer has
+                              expired.  Any further reception of open
+                              packets should be treated as a new
+                              connection.
+
+               B6--ST.DEL     The connection should be deleted when the
+                              work count becomes zero.
+
+               B7--ST.ACK     An ACK has been received and is pending
+                              processing.
+
+CSSNDC         Send count which indicates how many SPP packets have been
+               sent to the 1822 interface by DSP but have not reached
+               I/O completion.  As long as this count is positive the
+               connection cannot be deleted since there are still
+               signals outstanding for the connection.
+
+CSNDQH         Send queue head for SPP packets ready to be sent by DSP.
+               When a user process sends a packet it is put on this
+               queue so that DSP can do the actual SIO to the 1822
+               interface.  This is done so that DSP will be signaled
+               when the I/O is complete rather than the user process.
+               Note that packets on this queue are linked by the PDLINK
+               word of the packet descriptor.
+
+
+
+                                   81
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+CSNDQT         Send queue tail.
+
+CSEQNO         Last sequence number used for SPP send packet.  This word
+               is initialized to the low 16 bits of the time-of-day
+               (TOD) when the connection is opened.
+
+CSLWE          Send left window edge (LWE) which is the sequence number
+               of the oldest SPP packet on the retransmission queue.
+
+CRTXQH         Retransmission queue head.  SPP packets are put on the
+               retransmission queue until an ACK is received for their
+               sequence number.  These packets are linked by the PDRTX
+               word of the packet descriptor.
+
+CRTXQT         Retransmission queue tail.
+
+CRTXCT         Retransmission count which indicates how many times the
+               SPP packet at the head of the queue has been
+               retransmitted.  If the retransmission count exceeds the
+               maximum the connection is put in the delete state and is
+               closed up whenever any work outstanding has completed.
+
+CACKSQ         Sequence number of the last ACK packet received.
+
+CSACKT         Acknowledgment time which is the 32 bit TOD the last ACK
+               packet was received.  This time is retrieved from the
+               first two words past the end of the packet text since all
+               packets are time-stamped there by the 1822 I/O handler.
+
+CRSQNO         Receive LWE which is the sequence number of the next
+               expected SPP packet to be received.
+
+CRCVCT         Receive count which indicates how many outstanding
+               $PRRCVs the user process has issued.
+
+CRCVQH         Receive queue head for packets received on the
+               connection.  The PDLINK word of the packet descriptor is
+               used for the queue link.
+
+CRCVQT         Receive queue tail.
+
+CWRKCT         Work count which is a count indicating how many actions
+               have been initiated which will result in a signal to DSP
+               such as timers and $SIOs.  This word is used to control
+               when a connection can be deleted.
+
+CLSTDT         Last SPP packet time delay word which is the difference
+               between the TOD when the SPP packet was sent and the TOD
+               when the ACK was received.
+
+
+
+                                   82
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+CSNDOP         Opcode to be used for signaling when SPP packets have
+               been sent.
+
+CRCVOP         Opcode to be used for signaling when a packet has been
+               received.
+
+CSLNK          Link word pointing to the statistics table of the next
+               higher up level of protocol such as TCP.
+
+
+               The rest of the CCB is the statistics section which
+
+corresponds exactly to words 3 through 50 of the cumstat packets
+
+described in Section .  The cumstat packets are built by copying
+
+this statistics section for each connection.
+
+
+     2.   DSP Program Logic Overview          ___ _______ _____ ________
+
+
+          a.   Input Processing               _____ __________
+
+
+               A packet buffer is allocated by the Dispatch/SPP process
+
+before issuing an input I/O request from the 1822 interface.  The
+
+Dispatch/SPP process normally keeps two requests outstanding for input.
+
+This enables the I/O interrupt handler to immediately reinitialize
+
+packet input and avoids the time delay for context switch to the
+
+Dispatch/SPP process to request the next input.  When one input request
+
+completes, the MOS I/O handler automatically advances to the next
+
+request outstanding and issues a Signal to the Dispatch/SPP process; the
+
+signal simply consists of the Packet Descriptor of the newly-received
+
+packet.
+
+
+               The DSP process awakens with the signal from the I/O
+
+handler and begins to scan its list of dispatch tables for a match
+
+
+
+                                   83
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+condition.  If a match is found, the Dispatch/SPP process tests to see
+
+if the associated connection is transparent, in which case the packet is
+
+handed to the process that has issued a $PRRCV call on the connection.
+
+If the connection uses SPP protocol (indicated by the dispatch table
+
+entry), the DSP process sequences the packet within the receive window.
+
+The window size is equal to 1 plus the number of outstanding receives.
+
+When the receiving process takes a packet from the edge of its window,
+
+the DSP signals the process with the packet address.  It then allocates
+
+another packet buffer and builds an ACK for the packet that was
+
+received.  The DSP process then places the ACK on the output buffer
+
+queue by a request to MOS.  Duplicate packets and packets outside the
+
+receive window are filtered by the DSP process and are not passed on to
+
+the user process.
+
+
+               When a process receives a packet signal from the DSP
+
+process, it then "owns" the packet buffer.  After the packet is used,
+
+the process calls $FVS to release the packet, passing the address of the
+
+packet descriptor.
+
+
+          b.   Output Processing               ______ __________
+
+
+               An application process issues a call to the system to
+
+allocate a packet buffer and thus obtains a packet descriptor.  The
+
+process then sets up the packet descriptor by setting the PDADDR word,
+
+PDOP word, and the PDPKLN word.  The text fields of two packets are set
+
+and a call to the DSP module is made to send the packet.  If the packet
+
+
+
+
+                                   84
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+is associated with a transparent connection, the procedure issues
+
+(queues) an I/O request for output to the 1822 interface and returns
+
+immediately to the caller.  If the packet is associated with an SPP
+
+connection, it is given to the DSP process by means of a signal.  The
+
+DSP process then places the packet on a retransmission queue and issues
+
+a request for output to the 1822 interface.
+
+
+               The I/O portion of MOS issues a signal to the originating
+
+process whenever an I/O transfer is completed.  For transparent
+
+connections, the application process that issued the DSP SEND call
+
+(which did the I/O directly) is signaled by the I/O handler.  For SPP
+
+connections, the DSP process receives the Signal (because it issued the
+
+I/O request) and starts a timer, which will expire when the packet needs
+
+retransmission.  The DSP process continues to wait for an ACK for the
+
+packet that was transmitted.  When the ACK is received by the DSP
+
+process, a signal is given to the application process and the packet is
+
+removed from the retransmission queue.
+
+
+               Note that the application process that initially
+
+allocated the packet always "owns" the packet, and is responsible for
+
+releasing it (or may reuse it).
+
+
+     3.   Module Configuration          ______ _____________
+
+
+
+
+
+
+
+
+
+
+                                   85
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+
+                  X   THE TRANSMISSION CONTROL PROGRAM
+
+
+     With the recent proliferation of computer networks, the range of
+
+computing power possessed by the attached nodes is ever expanding
+
+downward.  In the case of the packet radio network (PRNET), many host
+
+computers are nothing more than intelligent terminals.  Given the need
+
+to associate a connection control process with each terminal to achieve
+
+end-to-end reliability, it becomes necessary in the case of the more
+
+complex protocols to define a subset of functions to be provided and
+
+devise different approaches to implementation that are in keeping with
+
+the computing resources available at the terminal.  This section
+
+describes an implementation scheme for an internetwork Transmission
+
+Control Program [TCP] using the Cerf-Kahn protocol  [] designed
+
+specifically to be used on a dedicated microcomputer and to support low-
+
+delay, moderate-throughput interactive traffic.
+
+
+     The protocol discussed in this implementation does not strictly
+
+follow the April 1977 revised specification; rather, it is an
+
+experimental extension of that Version 2 specification.  Detailed
+
+knowledge of the internetwork TCP protocol is assumed, and the reader is
+
+referred to the official specification  [] and its extensions for
+
+justification and further discussion of the details of the protocol.
+
+
+
+
+
+
+                                   86
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+A.   TCP Configuration Parameters     ___ _____________ __________
+
+
+     The TCP can be configured in several modes.  By using conditional
+
+assembly switches, it is possible to: select two different operating
+
+systems, ELF or MOS; include/exclude server protocol function handlers;
+
+specify swapped or unswapped network interface; control the amount of
+
+protocol error processing; perform debugging or performance monitoring
+
+functions; and control the general operating parameters of the TCP.
+
+These switches are:
+
+
+     $ELF--Controls the generation of ELF-compatible system calls.  If
+          this switch is nonzero, code to generate ELF-compatible system
+          calls is included.  Otherwise, code for interfacing to MOS is
+          generated.
+
+     $SERVR--Controls the generation of server protocol handling code.
+          The two modes are: user-only protocol handler and full
+          user/server protocol handler.  If this switch is equated to a
+          nonzero value (1 is recommended), server code is assembled.
+
+     $SWAPF--Specifies a byte-swapped or unswapped network interface.
+          If this switch is zero, the packet is assumed to be in the
+          usual (backwards) PDP-11 format.  Other code is generated to
+          convert the packet into that format.
+
+     $FLERR--Controls the amount of protocol error processing desired.
+          If this switch is equated to zero and if $SERVR is equated to
+          zero, error messages are generated only for a required subset
+          of detected error conditions.
+
+     $DEBUG--Controls the generation of unusual-condition debugging
+          checkpoints.  This switch is zero for normal operation.
+
+     $MONTR--Controls performance monitoring.  If this switch is
+          nonzero, event counters are maintained.
+
+
+     In addition, there are several assembly-time switches and constants
+
+that control TCP operation and set the size of various buffers:
+
+
+
+
+                                   87
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     MXRPKT--Is the maximum size of packets to be received from the
+          network.  Buffers of this size are allocated for network input
+          packet I/O.
+
+     MXSPKT--Sets the maximum size of packets to be transmitted to the
+          network.  Buffers of this size are allocated for constructing
+          and sending outgoing packets.
+
+     RSMLEN--Indicates the buffering capacity of the reassembly buffer,
+          in octets.  Because of its internal structure, the space
+          occupied by RSMBUF, in bytes, is twice its buffering capacity,
+          in octets.
+
+     RTXLEN--Sets the buffering capacity of the retransmission ring
+          buffer.  Because of its internal structure, the space required
+          by RTXBUF is twice the buffering capacity.
+
+     MAXRWS--Controls the maximum receive window size allowed and is
+          typically set equal to RSMLEN.
+
+     RTXBKO--Indicates the method used to calculate the interval between
+          retransmissions of packets.  It can currently take on three
+          values:
+
+
+          0--Indicates that the interval is constant and is equal to
+               RTXTMO.
+
+          1--Indicates that the interval is initially RTXTMO and
+               increases linearly with the number of unsuccessful
+               retransmissions, to a maximum set by RTXMAX.
+
+          2--Indicates that the interval is initially RTXTMO and
+               increases exponentially with the number of unsuccessful
+               retransmissions, to the maximum set by RTXMAX.
+
+     In the three cases above, the interval is reset equal to RTXTMO
+          after a successful transmission or retransmission.
+
+     RTXTMO--Is the initial retransmission interval.
+
+     RTXMAX--Sets the maximum allowed interval.
+
+     MAXTRY--Specifies the number of unsuccessful retransmissions of the
+          same packet necessary to declare the remote TCP "not
+          responding" and suspend the connection.
+
+
+
+
+
+
+                                   88
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+B.   Unimplemented TCP Functions     _____________ ___ _________
+
+
+     The initial goal of the implementation was to produce a TCP
+
+occupying a minimum of space, with speed considerations secondary.  In
+
+meeting this goal, several functions were not implemented:
+
+
+     .  Interrupt--Since no higher-level protocol has been implemented        _________
+        that uses the TCP interrupt feature, the interrupt handling was
+        omitted.  It cannot be generated by the local user process, nor
+        is the user process notified when an interrupt is received.  The
+        TCP handles INT as it would ARQ.
+
+     .  Connection resynchronization--This TCP responds correctly to        __________ _________________
+        sequence number resynchronization initiated by the remote side,
+        but never initiates resynchronization.
+
+     .  End-of-letter marking--Letter boundaries are ignored on input,        _____________ _______
+        and every outgoing packet that contains text has the end-of-
+        letter flag asserted.  Since the initial design was geared for
+        TELNET-type, character-at-a-time traffic, letter boundaries were
+        superfluous.
+
+     .  Reassembly of fragmented segments--Packets must have both the        __________ __ __________ ________
+        beginning-of-segment (BOS) and end-of-segment (EOS) control bits
+        asserted.  If either is not asserted, this means that, on
+        passing through a gateway, the segment was broken into
+        fragments.  Segment fragments can be processed if the end-to-end
+        checksum requirement is relaxed; but calculations of end-to-end
+        checksum requires that the fragments be reassembled into a
+        reconstruction of the original segment.  Fragmentation can be
+        avoided by limiting the segment length to less than the gateway
+        fragmentation threshold--achieved by restricting the receive
+        window size or by a priori agreement between the two ends.                          _ ______
+
+
+     All the functions need to be implemented in a general design, and
+
+they will be implemented in the future as need arises and time permits.
+
+Within the restrictions described above, the TCP ensures end-to-end
+
+acknowledgment, error correction, duplicate detection, sequencing, and
+
+flow control, thus providing the user process with a reliable, error-
+
+free logical communication channel.
+
+
+                                   89
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+C.   TCP Interface to the User Process     ___ _________ __ ___ ____ _______
+
+
+     As previously stated, the TCP provides the user process with a
+
+reliable logical communication channel.  The communication between the
+
+user and the TCP requires five primitives, four synchronous responses,
+
+and eight asynchronous responses (event signals).  These routines are
+
+called via a subroutine jump and indicate--by checking syntax and TCP
+
+state information--command acceptance or rejection on exit.  If the
+
+command entails deferred processing, as in the case of OPEN, SEND, and
+
+CLOSE, the user process is notified of the final disposition of the
+
+request.
+
+
+     Each call assumes parameters in registers, and it returns
+
+immediately to the caller upon initiation of some action.  For example,
+
+if the user process issues an $OPEN request, it receives a return code
+
+that indicates whether the OPEN call has been allowed.  Assuming that
+
+the call has been allowed, the user process receives a signal when the
+
+connection is successfully open or when the OPEN fails because of some
+
+error condition.  Thus user processing proceeds asynchronously and in
+
+parallel with TCP processing.
+
+
+     1.   List of Event Signals          ____ __ _____ _______
+
+
+          The following event signals are sent to the user process
+
+concerning its TCP connection:
+
+
+     (1)  Connection Established
+
+
+
+
+                                   90
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     (2)  Connection Error
+
+     (3)  TCP Not Responding
+
+     (4)  CLOSE Completed
+
+     (5)  Data on Connection
+
+     (6)  Connection Attempt Refused
+
+     (7)  SEND Completed
+
+     (8)  Remote Close.
+
+Most error-event signals are sent any time after an OPEN request has
+
+been accepted and until the final connection closed signal has been
+
+issued.  The very last signal the user process receives about any
+
+connection is the CLOSE Completed signal.  This signal shows that the
+
+TCP has completely cleaned up the connection and is ready to handle
+
+another connection.
+
+
+     2.   OPEN Connection           ____ __________ 
+
+
+          This command is:
+
+     Called with:  R1--Address of connection socket block
+     Returned with: R0--Return code
+                      = 0, if OPEN request is accepted
+                      = 1, ERROR, if connection is already open
+                      = 2, ERROR, if socket parameters are invalid
+     Signaled with: 0, when connection becomes established
+                   1, if protocol error is received
+                   2, if connection request times-out
+                   5, if connection-open attempt is refused
+     Valid when:   No outstanding connection exists.
+
+
+          Used to establish a connection, the OPEN primitive is passed
+
+foreign and local addressing information (foreign network, TCP, and
+
+port, and local port) (See Figure 1).  If a connection already exists,
+
+
+
+                                   91
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+the OPEN is rejected, and an error code is returned to the caller.  If
+
+the local socket value is zero, or, if, when the TCP is assembled for
+
+user-only protocol handling, the foreign network, TCP, or port value is
+
+zero, an error is returned to the caller.  After the request and socket
+
+IDS have been checked for reasonability, the connection control
+
+variables are initialized, and an initial sequence number (ISN) is
+
+chosen.  After program load or restart, the value of the ISN selected is
+
+indeterminate, depending on the contents of memory.  After the TCP
+
+process has been signaled to open a connection, control is returned to
+
+the caller.  When the connection is ready for use, the user process is
+
+notified.
+
+
+                          +-----------------+
+                          ! LOCAL PORT ID   !
+                          +--------+--------+
+                          !        ! FGN NET!
+                          +        +--------+
+                          ! FOREIGN TCP ID  !
+                          +--------+--------+
+                          !        !        !
+                          +--------+        !
+                          ! FOREIGN PORT ID !
+                          +-----------------+
+
+
+                Figure 1  CONNECTION SOCKET BLOCK FORMAT
+
+
+     3.   SEND Data          ____ ____
+
+
+          This command is:
+
+     Called with:  R1--Address of user send buffer
+                   R0--Length of user buffer, in bytes
+     Returned with: R0--Return code
+                      = 0, SEND request accepted
+                      = 1, ERROR, connection not open
+                      = 2, ERROR, another SEND in progress
+     Signaled with: 6, when SEND completes
+
+                                   92
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     Valid when:   connection has been established.
+
+
+          This call causes the data contained in the user buffer to be
+
+sent on the connection.  If a previous SEND has not completed, or if the
+
+connection has not been established, the SEND is rejected, and an error
+
+code is returned.  If the call is valid, the buffer address and length
+
+are stored in a common data area; the TCP process is notified of work
+
+pending; and control is returned to the caller.  After the data have
+
+been packetized and sent (but not necessarily acknowledged), the user
+
+process is notified.
+
+
+     4.   RECEIVE Data          _______ ____
+
+
+          This command is:
+
+     Called with:  R1--Address of user receive buffer
+                   R0--Length of user receive buffer, in bytes
+     Returned with: R0--Number of bytes transferred
+     Signaled with: Nothing
+     Valid when:   User has signaled that new data exist.
+
+
+          The user process is notified when data arrive on the
+
+connection, and the data are moved into user buffers by a RECEIVE.
+
+RECEIVE is called with a buffer pointer and a maximum byte count and
+
+returns the actual byte count.  After delivery to the user, a TCP
+
+acknowledgment (ACK) for the bytes delivered to the user is returned to
+
+the sender.  If the user does a RECEIVE when there are no data, a byte
+
+count of zero is returned.
+
+
+
+
+
+
+
+                                   93
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     5.   CLOSE Connection          _____ __________
+
+
+          This command is:
+
+     Called with:  Nothing
+     Returned with: R0--Return code
+                      = 0, CLOSE accepted
+                      = 1, ERROR, no connection to CLOSE
+     Signaled with: 3, when connection has been closed
+     Valid when:   Connection exists.
+
+
+          This command causes the connection to be closed.  If the
+
+connection is not open, an error code is returned.  No more data are
+
+accepted for sending, and a FIN is sent to the remote TCP.  Control is
+
+returned to the caller, and the user is notified when the CLOSE has been
+
+completed.
+
+
+D.   Structure of the User Process under TCP     _________ __ ___ ____ _______ _____ ___
+
+
+     The interface to TCP was designed, in particular, to support a user
+
+process of a specific structure, although no doubt it will also work
+
+satisfactorily with other program structures.  The model of the user
+
+process assumes a source and a sink for data that are sent or received
+
+over the TCP connection.  The user process should have four Boolean
+
+variables or flags for use in maintaining connection information.
+
+
+     The first Boolean variable, called the OPEN!ISSUED flag, is false
+
+initially and is set to true when the user process does an OPEN request
+
+that does not return an error code.  This flag is used by the program to
+
+remember that it has successfully issued an OPEN and that issuing
+
+another OPEN request is not allowed until the previous OPEN has been
+
+
+
+                                   94
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+canceled by a CLOSE call or a connection error condition.  This variable
+
+is optional in that the TCP will ensure that only one OPEN request is
+
+outstanding and will return an error code for all extra calls.  The
+
+OPEN!ISSUED flag is reset to false when the user receives the CLOSE
+
+Completed event signal.  As already noted, the last signal the user
+
+receives about a connection is the CLOSE Completed signal and this
+
+signal is always sent to the user process.
+
+
+     The second flag is the CONNECTION!ESTABLISHED indicator.  This flag
+
+is initially false and is set to true when the user process receives a
+
+Connection Established event signal.  This variable is used to indicate
+
+that data may be sent over the connection.  The flag is reset to false
+
+when the user does a CLOSE primitive or receives the Remote Close event
+
+signal.  Again, this flag is optional in that the TCP will return an
+
+error indication if the user tries to send data over a nonexistent
+
+connection.
+
+
+     The third flag, NEW!DATA, is initially false and is set to true
+
+when the Data on Connection event signal has been received.  Since, in
+
+general, the sink of TCP data may not always be ready for more data,
+
+this flag reminds the user process that data exist on the connection and
+
+should be accepted as soon as the sink is able.  The flag is reset to
+
+false when the RECEIVE call has been issued or when the CLOSE Completed
+
+signal has been received.  Normally, the connection is not completely
+
+closed until the user has received all the data sent by the remote site
+
+over the connection, and the NEW!DATA flag will therefore be false.
+
+
+
+                                   95
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+But, in the case of certain connection errors, the connection may be
+
+aborted, even though there are unreceived data.
+
+
+     The fourth flag, SEND!OUTSTANDING, is also initially false.  This
+
+flag is set to true whenever a SEND has been issued and is reset to
+
+false when the SEND Complete signal has been received.  This flag should
+
+be tested before any SENDs are done, and the SEND should not be issued
+
+if the flag is true; in that event, the text should be queued for later
+
+sending.  This flag is optional; the TCP returns an error code if the
+
+user attempts to do more than one SEND without waiting for the matching
+
+event completion signal.
+
+
+E.   TCP Interface to the Network     ___ _________ __ ___ _______
+
+
+     To enable the TCP to be used with computer networks with different
+
+structure and interfacing requirements, all network-dependent code is
+
+concentrated in four routines.  This division should work equally well
+
+with virtual-circuit-switched and with packet-switched networks.  The
+
+network interface routines and their functions are:
+
+
+     NETOPN--Called on connection initialization, this routine can
+          initialize device driver routines and perform the HOST-NETWORK
+          start-up sequence.  Alternatively, it can be used to establish
+          a subnetwork connection when employed on a circuit-switched
+          network.  It returns when the network is ready to
+          deliver/accept messages to/from the TCP process.
+
+     NETIN--Passed the address of a packet buffer, this routine
+          initiates action to accept a message from the network.
+          Control returns immediately to the caller, and the TCP process
+          is signaled when a valid message has been received.
+
+     NETOUT--Called with the address of a message to send, this routine
+          performs the network-dependent formatting of the HOST-NETWORK
+
+
+                                   96
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          message header.  Transmission of the message into the network
+          is started, and control is returned to the caller.  When the
+          output has been completed, the TCP process is signaled.
+
+     NETCLS--Called on connection termination, this routine performs any
+          clean-up functions required at that time.
+
+
+F.   Connection Control Variables     __________ _______ _________
+
+
+     1.   Transmission Control Block Format          ____________ _______ _____ ______
+
+
+          All the information local to a specific connection is kept in
+
+a transmission control block (TCB).  The following are the fields of the
+
+TCB and their length.  (Bit numbering follows the usual PDP-11
+
+conventions and starts with B0 as the least significant bit.)  The
+
+explanatory text for each flag indicates the state condition present if
+
+the bit is asserted (= 1):
+
+
+STATE(16 bits)--These flags indicate at all times the state of the
+     connection.  If all flags are zero, the connection is closed.  The
+     bit assignments for flags are:
+
+
+     B0--ST.SS: A SYN packet has been sent.
+
+     B1--ST.SA: An ACK for the previously sent SYN packet has been
+          received.
+
+     B2--ST.SR: A SYN packet from the foreign TCP has been processed and
+          an ACK for it has been returned.
+
+     B3--ST.RS: An RSN packet has been sent.  Not used; reserved for
+          future expansion.
+
+     B4--ST.RR: An RSN packet from the remote TCP has been processed.
+          Not used; reserved for future expansion.
+
+     B5--ST.FS: A FIN packet has been sent.
+
+     B6--ST.FA: An ACK for the previously sent FIN packet has been
+          received.
+
+
+                                   97
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     B7--ST.FR: A FIN packet from the foreign TCP has been processed and
+          an ACK for it has been sent.
+
+     B8--unused
+
+     B9--ST.SPN: A packet has been retransmitted the maximum number of
+          times without any packets being received from the remote TCP.
+          The remote TCP has been declared "not responding"; the user
+          has been signaled with the TCP Not Responding event; and the
+          connection has been put into a suspended state.  Transmission
+          of packets continues, and, if the foreign TCP becomes
+          responsive again, the connection will be resumed with no loss
+          of data.
+
+     B10--ST.USE: The connection has been synchronized, is not in the
+          process of closing, and therefore is usable for data transfer.
+
+     B12--ST.UP(Server only)--The connection has been opened with an
+          unspecified port ID and has not yet been established.  The
+          foreign port ID of an incoming SYN packet is not to be checked
+          for a match.  This flag is cleared when the connection becomes
+          established.
+
+     B13--ST.UT(Server only)--The connection has been opened with an
+          unspecified tcp ID and has not yet been established.  The
+          foreign TCP ID of an incoming SYN packet is not to be checked
+          for a match.  This flag is cleared when the connection becomes
+          established.
+
+     B14--ST.UN(Server only)--The connection has been opened with an
+          unspecified net id and has not yet been established.  The
+          foreign net ID of an incoming SYN packet is not to be checked
+          for a match.  This flag is cleared when the connection becomes
+          established.
+
+     B15--ST.LSN(Server only)--The connection has been opened in the
+          "listening" mode.  This flag is cleared when the connection
+          becomes established.
+
+FLAGS(16 bits)--These flags, when asserted, generally indicate work
+     pending for the TCP to handle.  The bit assignments are:
+
+
+     B0--FL.ERR: Send the Special/Error packet that has been constructed
+          by the input handler.  The address of the I/O request block
+          that points to the packet is saved in the RCVIOR field of the
+          TCB.
+
+     B1--FL.SYN: Send a SYN control packet.
+
+
+
+                                   98
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+     B2--FL.INT: Send an INT control packet.
+
+     B3--FL.ARQ: Send an ARQ control packet.
+
+     B4--FL.RSN: Send an RSN control packet.
+
+     B5--FL.FIN: Send a FIN control packet.
+
+     B6--FL.ACK: Send an ACK packet.
+
+     B7--FL.TXT: User data are queued for transmission.
+
+     B8--FL.RTX: Retransmit head of retransmission queue (if nonempty).
+
+     B9--FL.NUL: Newly received packet is ACK-only.  This flag is used
+          only during input packet processing.
+
+     B10--FL.DUP: Newly received packet is a duplicate.  This flag is
+          used only during input packet processing.
+
+     B11--FL.WDW: Update the send window.  This flag is used only during
+          input packet processing.
+
+     B12--Unused.
+
+     B13--Unused.
+
+     B14--FL.CHK: Check the head of the reassembly buffer for control or
+          text that can be processed.
+
+     B15--FL.DEL: The connection has been closed, and all outstanding
+          work has been finished.  Close the network connection (using
+          NETCLS), and then delete the TCB.
+
+AUXFLG(16 bits)--Auxiliary connection flags.
+
+
+     B0-B12--Unused.
+
+     B12--FL.RUP: The connection was opened with an unspecified foreign
+          port ID.  This flag is used in resetting connection state.
+
+     B13--FL.RUT: The connection was opened with an unspecified foreign
+          TCP ID.  This flag is used in resetting connection state.
+
+     B14--FL.RUN: The connection was opened with an unspecified foreign
+          net ID.  This flag is used in resetting connection state.
+
+     B15--FL.LSN: The connection was opened in the listening mode.  The
+          is flag is used in resetting connection state.
+
+
+                                   99
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+OPTNS(16 bits)--Header option processing flags.
+
+TCPPID(8 bits)--Process ID of the TCP process.
+
+USRPID(8 bits)--Process ID of the user process.
+
+LNETID(8 bits)--ID of the network to which the TCP is connected.
+
+LTCPID(24 bits)--Local TCP ID.
+
+LPORT(24 bits)--Local port ID.  Along with LNETID and LTCPID, it forms
+     the local socket.
+
+Padding(8 bits)
+
+FNETID(8 bits)--Foreign network ID.  (Cf.   [] for list of assigned
+     network numbers.)
+
+FTCPID(24 bits)--Foreign TCP ID.
+
+FPORT(24 bits)--Foreign port ID.  Along with DNET and DTCP, it forms the
+     destination socket.
+
+Padding(8 bits)
+
+INISEQ(32 bits)--Initial sequence number received from the foreign TCP.
+     It is used to detect old duplicates of the SYN that established the
+     connection.
+
+NEWSEQ(32 bits)--Next sequence number expected after completing the
+     resynchronization sequence.
+
+RCVSEQ(32 bits)--Next sequence number expected.
+
+RCVWS(16 bits)--Receive window size.
+
+SNDSEQ(32 bits)--Next sequence number to be sent.
+
+SNDWS(16 bits)--Size of the send window.
+
+LWUSEQ(32 bits)--Sequence number of the first octet in the packet most
+     recently used to update the send window information.
+
+LWESEQ(32 bits)--Left-send window-edge sequence number.  This is the
+     sequence number of the octet at the head of the retransmission
+     queue.
+
+RMSFNT(16 bits)--Address of the start of the reassembly ring buffer.
+
+
+
+
+                                  100
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+RMSEND(16 bits)--Address of the end of the reassembly ring buffer plus
+     one.
+
+RSMHD(16 bits)--Pointer to the head of the receive data reassembly ring
+     buffer.
+
+SNDUVA(16 bits)--Address of the start of the user's send buffer.
+
+SNDBR(16 bits)--Number of bytes in the user's send buffer.  The byte
+     count and buffer pointer are set when the user does a SEND and are
+     updated as the output process removes and sends data.
+
+RTXDLY(8 bits)--Retransmission interval, in seconds.
+
+WAKEUP(8 bits)--Number of retransmission wake-ups.  Since the TCP
+     currently gets a timer signal once a second, this field is counted
+     down until it reaches zero.  At that point, the retransmission
+     handler is invoked, and this field is reset to the value contained
+     in RTXDLY.
+
+MRETRY(8 bits)--Number of retransmissions of the same packet needed to
+     declare the remote TCP Not Responding.
+
+RETRY(8 bits)--Count of the number of retransmissions sent without
+     receiving any new ACKs.  It is cleared when a valid ACK comes in.
+     When the number of retransmissions exceeds a preset value,
+     contained in MRETRY, the user is notified: TCP Not Responding.
+
+RTXFNT(16 bits)--Address of the start of the retransmission ring buffer.
+
+RTXEND(16 bits)--Address of the end of the retransmission ring buffer
+     plus one.
+
+RTXHD(16 bits)--Pointer to the head of the retransmission ring buffer.
+
+RTXTL(16 bits)--Pointer to the next free location in the retransmission
+     ring buffer.
+
+RTXCNT(16 bits)--Number of bytes of data in the retransmission buffer.
+
+RTXCC(16 bits)--Count of the number of control bytes queued for
+     retransmission in the ring buffer.
+
+RCVIOR(16 bits)--Address of the I/O request block for the newly received
+     packet.  Used in queueing an error message to be sent.
+
+SNDIOR(16 bits)--Address of the I/O request block for the newly
+     generated packet about to be sent.
+
+
+
+
+                                  101
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+SNDCNT(8 bits)--Number of packets handed to the network interface (via
+     NETOUT) for which the corresponding I/O completion signal has not
+     been received.  Used to prevent flooding of the network interface.
+
+MXSNDC(8 bits)--Maximum allowable value of SNDCNT.  If SNDCNT equals
+     MXSNDC, packet transmission is suspended until the output
+     completion signal has been received.
+
+
+     2.   Connection Buffers          __________ _______
+
+
+          Data traversing a TCP connection move through six buffers: the
+
+user Send and Receive buffers; the network output and input buffers; and
+
+the TCP retransmission and reassembly buffers.  The Send/Receive buffers
+
+are provided by the user and are linear in form; that is, the TCP
+
+process accesses a buffer in a sequential manner from the start of the
+
+buffer to its end.  The network I/O buffers are managed by the TCP
+
+process and have a form dictated by the network interface--usually
+
+linear.  The two internal TCP buffers are:
+
+
+     RSMBUF--The ring buffer where incoming data from packet segments
+          are reassembled and stored pending delivery to the user
+          process.
+
+     RTXBUF--The ring buffer where outgoing data waiting to be
+          acknowledged are enqueued.
+
+
+          The internal structure of RSMBUF and RTXBUF is such that each
+
+octet of data or control function indicator buffered is described by
+
+another byte.  In memory, the buffer is organized with the descriptor
+
+byte in the even byte and the data byte in the odd byte.  The meaning of
+
+the descriptor byte for various (octal) values is:
+
+
+       0--The data byte does not, in fact, contain valid data.
+
+
+
+                                  102
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+       1--The data byte is a SYN control function indicator.
+
+       2--The data byte is an INT control function indicator.
+
+       4--The data byte is an ARQ control function indicator.
+
+      10--The data byte is an RSN control function indicator.
+
+      20--The data byte is a FIN control function indicator.
+
+     100--The data byte marks the end of a letter.
+
+     200--The data byte contains valid user data.
+
+
+G.   TCP Process Structure     ___ _______ _________
+
+
+     1.   Input Packet Processing          _____ ______ __________
+
+
+          When a new packet has been received from the network, the TCP
+
+process is awakened on input completion.  The local PSN header is
+
+removed, and the format of the incoming packet is checked against that
+
+of an internetwork message; malformed packets are discarded.  The
+
+validity check requires that the length of the packet be sufficient to
+
+contain the TCP packet header and that the packet protocol version
+
+number field contain the correct value.  If the packet is of proper
+
+format, the beginning-of-segment and ending-of-segment bits (BOS & EOS)
+
+are checked to find out whether the segment was fragmented by passing
+
+through a gateway.  If the segment was fragmented, it is discarded;
+
+otherwise, the checksum for the packet is calculated, and detectably
+
+damaged packets are discarded.
+
+
+          After validation, the addressing contained in the packet is
+
+compared with the socket identifiers for the TCP connection.  If the
+
+
+
+                                  103
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+connection is closed or, after unspecified foreign socket fields have
+
+been taken into account, if the addresses do not match, the packet is
+
+discarded; a RESET connection error message is constructed; and the
+
+error code to be sent by the output handler is flagged.
+
+
+          If the packet contains an error indication (RESET function),
+
+it is handled by the SPCPKT routine [see Section b]; normal
+
+control and data packets are then checked to see whether they can be
+
+accepted for processing, depending on the state of the connection.  If
+
+the connection is synchronized on the receive side, any packet that is
+
+not a SYN, or any SYN that is a duplicate of the original SYN, is
+
+accepted for processing; if the SYN is not a duplicate, it is not
+
+acceptable, and an empty ACK is sent to probe the remote TCP.  If the
+
+receive side has never been synchronized, only a SYN packet, or a SYN-
+
+ACK packet that acknowledges the local SYN is accepted; for all other
+
+packets, RESET connection error messages are generated.  If the packet
+
+is acceptable, the REGPKT routine [see Section a] is called to
+
+handle it.
+
+
+          a.   Normal Input Packet Processing               ______ _____ ______ __________
+
+
+               The structure of the normal input packet processing
+
+routine is very simple.  The packet is tested for various conditions in
+
+succession, and, if a condition is true, code for handling the condition
+
+is executed; otherwise, the condition is bypassed, and the next
+
+condition test is performed.  The order of processing corresponds to the
+
+
+
+
+                                  104
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+hierarchy of control: first, SYN processing; next, INT, ARQ, and
+
+handling of text; and, finally, RSN and FIN.  This corresponds to the
+
+order of allocation of sequence numbers in packets with multiple
+
+functions.
+
+
+               If the packet contains a SYN control flag, the TCP checks
+
+to see whether the receive connection is synchronized (the ST.SR flag
+
+equals 1).  If the connection is synchronized, the packet is a duplicate
+
+of the original SYN (since the packet was accepted for processing), and
+
+it is logged as such.  If the connection is not synchronized, it is
+
+marked as synchronized; the receive left window edge sequence number is
+
+initialized to the packet sequence number plus one; and the foreign
+
+address information is moved into the TCB address block, in case the
+
+connection was opened partly unspecified.  If a SYN has not been sent
+
+(in the case of the listening connection), the output handler is flagged
+
+to send one, and the rest of the packet is ignored because the
+
+connection has not yet been fully synchronized.
+
+
+               After any SYN processing, the TCP checks to see whether
+
+the packet sequence number is more recent than the sequence number of
+
+the packet last used to update the send window; if so, the send window
+
+is marked for updating.  The packet sequence number is then normalized.
+
+That is, the receive left window edge is subtracted from the sequence
+
+number, thus converting the sequence number into the "distance" of the
+
+first sequenced octet from the current receive left window edge.  As
+
+sequenced octets are processed, this distance field is updated, so that
+
+
+
+                                  105
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+it is always the distance of the octet being processed from the receive
+
+left window edge.
+
+
+               If the packet contains an INT control flag, the TCP first
+
+verifies that the INT is valid.  If the INT is a duplicate (distance to
+
+window edge negative), or if it is from the future (distance from window
+
+edge greater than maximum possible window, 2**16 - 1), then it is
+
+ignored.  Otherwise, the receive left window edge is advanced to the INT
+
+sequence number; the distance is reset to zero; the receive reassembly
+
+buffer is reset to empty; and the INT control octet is inserted into the
+
+reassembly buffer.  The insertion of control function octets into the
+
+reassembly buffer is handled by the RCVCTL routine [see Section
+
+c].
+
+
+               If the packet contains an ARQ control flag, the ARQ
+
+control octet is inserted into the reassembly buffer, at its proper
+
+place.  The RCVCTL routine determines whether or not the control octet
+
+lies inside the receive window.
+
+
+               If the packet contains text, the text that lies inside
+
+the receive window is moved into the reassembly buffer.  Before moving
+
+the text, the TCP must determine three numbers: the amount of text to be
+
+moved from the packet, the offset in the packet of the first byte of
+
+text to be moved, and the offset in the reassembly buffer that is its
+
+destination; these three quantities control the actual text movement.
+
+
+
+
+
+
+                                  106
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+               If the packet contains a RSN control flag, the RSN
+
+control octet is inserted into the reassembly buffer.  The packet header
+
+is then scanned for the options field that contains the new sequence
+
+number, and this number is stored in the NEWSEQ field in the TCB.  If
+
+the resynchronize option is not found, the RSN control flag is
+
+considered a protocol error; the fact is logged, and the connection is
+
+aborted.
+
+
+               If the packet contains a FIN control flag, the FIN
+
+control octet is inserted into the reassembly buffer by RCVCTL.
+
+
+               After the processing of any control or text in the
+
+packet, any ACKs in the packet are handled.  Whatever has been
+
+acknowledged is removed from the retransmission buffer.  In addition, if
+
+a SYN control function has been acknowledged, the connection is moved to
+
+the established state, and the user process is notified.  If a FIN
+
+control function has been acknowledged, and a FIN has been received from
+
+the remote TCP, the connection is marked for deletion.
+
+
+               If this packet contains new window information, that
+
+information is extracted and stored in the TCB SNDWS field, with the
+
+exception that a zero window is never accepted from a null (ACK-only)
+
+packet.  If the packet is a duplicate, the output handler is flagged to
+
+send an ACK.
+
+
+               After processing the packet, the TCP flags itself process
+
+to check the head of the reassembly buffer for control or text flags;
+
+
+
+                                  107
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+control flags are processed, and text flags cause the user process to be
+
+signaled with the Data on Connection event.  [See Section d for
+
+details of control processing.]
+
+
+          b.   Error Input Packet Processing               _____ _____ ______ __________
+
+
+               Error (RESET) packets are verified differently from
+
+regular control packets; the sequence number is ignored.  If the error
+
+packet acknowledges something that has been sent but has not been
+
+acknowledged, the error is assumed valid.  If the connection has not
+
+been established, the user is signaled with Connection Attempt Refused;
+
+if the connection was open, the user is signaled with Connection Error.
+
+In either case, the connection is aborted.
+
+
+          c.   RCVCTL--Insert Control Function Indicators               ______________ _______ ________ __________
+
+
+               When a packet that has been received contains an INT,
+
+ARQ, RSN, or FIN control function, an indicator byte must be inserted
+
+into the reassembly buffer, since these functions occupy sequence number
+
+space.  Before inserting the indicator byte, the control function is
+
+verified as not being a duplicate and within the receive window.  [See
+
+Section  for details of the internal buffer structure.]
+
+
+          d.   CHKRSM--Process Control Functions               _______________ _______ _________
+
+
+               After any packet has been received or after the user has
+
+taken more data, the head of the reassembly buffer must be checked to
+
+see whether any control functions have been uncovered.  If the first
+
+
+
+                                  108
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+byte of the reassembly buffer, corresponding to the byte of the receive
+
+left sequence number, is occupied by text, the user is notified of the
+
+pending data.  If there is control, the control indicator byte is
+
+removed; the reassembly buffer head pointer is advanced; the receive
+
+left sequence number is advanced by one; and the output side is flagged
+
+to send an ACK.
+
+
+               If there is an RSN control, the receive sequence number
+
+is changed to the number that was in the option field and was saved in
+
+the NEWSEQ variable in the TCB.
+
+
+               If the control is a FIN, the TCP starts to close down the
+
+connection.  The ST.FR flag is set in the STATE word to indicate that a
+
+FIN has been received, and the ST.USE flag is cleared to indicate that
+
+the user is no longer allowed to send data on the connection.  If the
+
+user has already issued a CLOSE, the TCP determines whether the three-
+
+way closing handshake has been completed (ST.FS = 1, ST.FA = 1, and
+
+ST.FR = 1), and , if so, deletes the connection.  Otherwise, the TCP
+
+notifies the user of the remote close and initiates connection closing
+
+by sending a FIN to the remote TCP.
+
+
+     2.   Output Packet Processing          ______ ______ __________
+
+
+          The input packet handler and the user interface routines
+
+communicate with the output packet handler via the FLAGS word in the
+
+TCB.  This word contains the output work-to-do flags.  For example, to
+
+send a SYN packet, the input packet handler sets the FL.SYN flag in the
+
+
+
+                                  109
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+FLAGS word.  Each time the TCP process is scheduled, the FLAGS word is
+
+checked for output work after the input packet processing has been done.
+
+
+          a.   Transmission of Error Packets               ____________ __ _____ _______
+
+
+               Errors are generated only by incoming packets that do not
+
+satisfy the socket matching requirements.  On detecting this condition,
+
+the input handler constructs an error packet in the receive packet
+
+buffer and flags the output handler to send the error.  The input
+
+handler does not issue another input request; the output handler will do
+
+so.  The output handler constructs an output packet, using the error
+
+packet in the receive packet buffer as a template.  The sequence number
+
+of the error packet is set to the ACK sequence number of the packet in
+
+error, and the source and destination addresses for the error packet are
+
+the destination and source addresses, respectively, of the packet in
+
+error.  A new input request is issued for the input handler, and the
+
+error packet is transmitted.
+
+
+          b.   Transmission of User Text               ____________ __ ____ ____
+
+
+               When the user calls the TCP to send a buffer, the output
+
+handler is flagged to send user text.  It first decides whether there is
+
+space in the send window to allow transmission of the text; if there is
+
+not, control passes to the transmission of control function handler.  If
+
+there is room in the window, the TCP calculates the minimum of the space
+
+left in the send window, the remaining retransmission buffer (RTXBUF)
+
+space, the maximum amount of text in a packet, and the amount of user
+
+
+
+                                  110
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+data to be sent.  This amount of text is moved from the user's buffer
+
+into the outgoing packet and into the retransmission buffer.  After the
+
+transfer, the user buffer pointer is advanced, and the number of bytes
+
+remaining is calculated.  If no bytes remain, the FL.TXT flag is
+
+cleared, and SEND Completion is signaled to the user; otherwise, the
+
+FL.TXT flag is left asserted.
+
+
+          c.   Sending Control Functions               _______ _______ _________
+
+
+               If it is necessary to send a control packet, the
+
+appropriate bit is set in the FLAGS word.  The packet is constructed; a
+
+control function indicator is inserted into the retransmission buffer;
+
+and the packet is transmitted.  The packet is constructed with only one
+
+control function; the work flags are scanned in order of decreasing
+
+priority: SYN followed by INT, ARQ, RSN, and FIN.
+
+
+          d.   Retransmission of Unacknowledged Text or Control               ______________ __ ______________ ____ __ _______
+
+
+               At present, the TCP process gets signaled every second
+
+and counts down the signals by using the WAKEUP counter in the TCB.
+
+When this counter reaches zero, the retransmission is triggered; a new
+
+value for the retransmission interval (RTXDLY) is calculated; and WAKEUP
+
+is initialized to that value.  Currently, the new value for RTXDLY can
+
+either be constant or increase linearly or exponentially with the number
+
+of unsuccessful retransmissions of a packet.
+
+
+
+
+
+
+
+                                  111
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+               When the retransmission time-out expires, the TCP
+
+determines whether the head of the retransmission queue has been
+
+retransmitted the maximum number of times; if so, the remote TCP is
+
+declared "not responding," and the connection is marked as suspended.  A
+
+count is kept in the RETRY field of the TCB, is incremented on every
+
+retransmission, and is reset to zero whenever a new packet has been
+
+received.  If the connection is not in a usable state (i.e., if it is
+
+attempting to open or close), the connection is aborted.
+
+
+               After deciding to retransmit, the TCP checks the head of
+
+the retransmission buffer to see whether it contains control or data;
+
+these two cases are handled separately.  If it contains control, a
+
+packet containing this control function is constructed and transmitted.
+
+If it contains data, a packet is constructed that contains all the data
+
+from the head of the retransmission buffer to its end or to the first
+
+control function indicator, with the amount of data not exceeding the
+
+maximum allowed in a single packet.  Thus the data packet boundaries are
+
+not preserved.
+
+
+     3.   User Interface Processing          ____ _________ __________
+
+
+          The user interface, as described earlier, comprises four user-
+
+callable subroutines.
+
+
+
+
+
+
+
+
+
+
+                                  112
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          a.   OPEN Connection Routine               ____ __________ _______
+
+
+               The OPEN connection processing is divided into two parts:
+
+the user-callable routine that copies the user's connection socket block
+
+into the TCB and signals the TCP process, and a subroutine internal to
+
+the TCP that handles the OPEN connection request signal generated by the
+
+user-callable routine.
+
+
+               The user-callable routine validates the OPEN request by
+
+checking the network status flag, connection state, and connection
+
+socket numbers.  Errors are generated if the network is not ready; if
+
+another connection is open; if the local socket number is zero; or, in
+
+versions without server protocol handling, if any of the foreign socket
+
+numbers are unspecified.  If the request is valid, the socket
+
+information is copied into the TCB; various default parameters in the
+
+TCB, such as MAXTRY and RTXTMO, are initialized; and the TCP process is
+
+signaled to complete OPEN processing.
+
+
+               When the TCP receives an OPEN request event signal, it
+
+reformats and initializes the reassembly and retransmission buffers;
+
+picks as an initial sequence number the previous send sequence number
+
+(SNDSEQ) plus one; and, if the connection is opened with fully specified
+
+foreign socket numbers, flags the TCP output handler to send a SYN
+
+packet.  When the connection becomes established, the user is notified.
+
+
+
+
+
+
+
+
+                                  113
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+          b.   SEND Data over Connection Routine               ____ ____ ____ __________ _______
+
+
+               The SEND routine verifies that the connection is usable
+
+for data transfer and that the previous SEND has been completed; stores
+
+the address and byte count of the user's buffer in the TCB; and signals
+
+the TCP process to handle transmission of the data.
+
+
+          c.   RECEIVE Data into User Buffer Routine               _______ ____ ____ ____ ______ _______
+
+
+               The RECEIVE routine checks the connection status and
+
+returns a byte count of zero if the connection is not in the established
+
+state.  Otherwise, the head of the reassembly buffer is checked to see
+
+whether it contains user data.  If so, the data octet is transferred
+
+into the user's buffer; the return byte count is incremented; the
+
+reassembly buffer entry is reset to empty; the head pointer is advanced
+
+to the next cell in the circular queue; and a check of the contents now
+
+at the head is performed.  Thus, the reassembly buffer is scanned until
+
+a cell that does not contain text is found or until the user's buffer is
+
+full.  The routine advances the receive left window edge by the number
+
+of bytes transferred to the user and signals the TCP to send an ACK for
+
+the data and to call CHKRSM to handle any control function flags that
+
+may now be at the head of the reassembly buffer.
+
+
+          d.   CLOSE TCP Connection Routine               _____ ___ __________ _______
+
+
+               Like the OPEN handler, the CLOSE processing is divided
+
+into a user-callable and a TCP internal routine.  The user-callable
+
+
+
+
+                                  114
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+routine simply signals the TCP to close the connection.  The TCP firsts
+
+checks the connection state; if a SYN has not been received, if a FIN
+
+has already been sent, or if the connection has been suspended because
+
+the remote TCP is not responding, the connection is deleted.  The
+
+deletion consists of setting the connection state to closed (STATE set
+
+to zero), resetting the retransmission buffer to empty, signaling the
+
+user SEND Completed if a SEND is outstanding, and finally signaling the
+
+user with CLOSE Completed.  If the connection is not in one of those
+
+states, it is marked as not usable for data transfer (ST.USE = 0), and
+
+the TCP output handler is flagged to send a FIN packet.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                  115
+17 April 1979                  D R A F T                        at 11:10
+
+
+
+
+
+
+
+                               REFERENCES
+
+
+
+1.   T. Chandler, "Remote PR Control Packets," Collins Radio Group
+     Government Telecommunications Division (February 1977).
+
+
+2.   R. Tomlinson, "XNET, Cross-Net Debugger for TENEX, User's Manual,"
+     Report No. 3377, Bolt, Beranek and Newman, Cambridge, Massachusetts
+     (September 1976).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                  116
+

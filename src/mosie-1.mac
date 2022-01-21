@@ -1,0 +1,287 @@
+
+	.INSRT	../moscnf-1.sml
+	.INSRT	../mosmac.sml
+	.INSRT	../mostbl.sml
+
+	$CNFIG
+
+	$DFDCT
+	$DFIOR
+	$DFIST
+
+;;;
+;;; Interlan Ethernet Interface driver
+;;;;
+
+	.GLOBL	.iiien			; Net Input initialization
+	.GLOBL	.oiien			; Net output initialization
+	.GLOBL	.isien			; Input transfer start
+	.GLOBL	.osien			; Output transfer start
+	.GLOBL	.itien			; Input interrupt
+	.GLOBL	.otien			; Output interrupt
+	.GLOBL	$IOCMP			; Output complete
+	.GLOBL	$ALS			; Allocate storage
+
+	.GLOBL	$MIETP,$MIEBT		;CODE TOP/BOTTOM
+
+;;;
+;;; Note that the input and output DCT's must have their link's
+;;; set correctly.
+;;;
+
+;;; The minimum packet size on the ethernet. Actually the minimum size is
+;;; only 64, but Bridge is wedged and think that that means 64 bytes of
+;;; data after the 14 byte header.
+
+EMINSZ =	78.
+
+
+;;;
+;;; Register addresses
+;;; (offset from the CSR)
+;;;
+IENCSR	=	0			; CSR 
+IENADR	=	2			; DMA address
+IENCNT	=	4			; byte count
+IENXTN	=	6			; Extended address bits (not used)
+
+;;;
+;;; Bit assignments in the CSR
+;;;
+
+S.CMDD	=	200			; Command done bit
+S.RCVD	=	40			; Receive done bit
+C.CMDI	=	100			; Command done interrupt enable
+C.RCVI	=	20			; Receive done interrupt enable
+
+;;;
+;;; Command codes
+;;; Only those used by this driver. Such things as buffer
+;;; chaining aren't supported.
+;;;
+CM.RST	=	77			; Reset the device
+CM.ONL	=	11			; Go online
+CM.CISA	=	16			; Clear Insert Source Address
+CM.MLP	=	01			; Module loopback mode
+CM.ILP	=	02			; Internal loopback mode
+CM.XMT	=	51			; Load Xmit data and send
+CM.RCV	=	40			; Supply receive buffer
+CM.LDG	=	52			; Load group addresses
+CM.DLG	=	53			; Delete group addresses
+CM.STA	=	30			; Report statistics
+CM.COL	=	31			; report collision delay times
+
+;;;
+;;; Commands are implimented by the user process placing the
+;;; desired command in IRFCN (Note that input requests don't
+;;; do this directly, but it is simulated by the driver since
+;;; all commands must go through the same three registers).
+;;;
+;;;
+
+;;; Special DCT usage
+;;;
+DCTIRQ	=	DCTBUF			; DCT input request Q.
+DF.CIP	=	DF.DV1			; Command register busy
+DF.IIP	=	DF.DV2			; last command was from input side
+
+;;; Special IORB usage
+;;;
+IRFCN	=	IRUS6			; used to pass commands from user
+					; processes
+
+	.CSECT	MOS
+
+;;; Initialization -- R2 DCT
+;;;
+$MIETP:
+.iiien:
+.oiien:
+	$PUSH	R0,R1,R3		; Save some registers
+	MOV	DCTLNK(R2),R1		; Get linked DCT
+	BIT	#DF.INI,DCTFLG(R1)	; Inited already?
+	BNE	10$			; yes, don't do it
+
+	; SET THE INTERRUPT VECTOR FOR THE LINKED DCT
+	; OUR VERSION OF MOS DOESN'T DO IT
+	MOV	DCTIVA(R1),R3		; GET INTERRUPT VECTOR ADDRESS
+	MOV	R1,(R3)			; SET POINTER TO DCT
+	ADD	#DCTIHX,(R3)+		;   AND TRANSFER TO DCT PREAMBLE
+	MOV	#340,(R3)		; DON'T ALLOW OTHER INTERRUPTS
+
+	MOV	#<CM.RST*256.>,@DCTCSR(R2)	; Reset the device
+1$:	TSTB	@DCTCSR(R2)		; Check result
+	BPL	1$			; Busy wait until done
+
+	MOV	#<CM.CISA*256.>,@DCTCSR(R2)	; Clear insert source addr mode
+2$:	TSTB	@DCTCSR(R2)		; Check result
+	BPL	2$			; Busy wait until done
+
+	MOV	DCTCSR(R2),R3		; Get csr
+	MOV	#StatLen,IENCNT(R3)	; Load count
+	MOV	#StatBuf,IENADR(R3)	; Load address of buffer
+	MOV	#<CM.STA*256.>,IENCSR(R3)	; Get status (i.e. get address)
+3$:	TSTB	IENCSR(R3)			; check
+	BPL	3$			; wait until finished
+	$PUSH	R2			; $ALS returns its value in R2
+	MOV	#6,R0			; Get 6 bytes of storage for my
+	EMT	234			;  EtherNet address (CALL $ALS)
+	MOV	R2,R0			; Save pointer to memory
+	BEQ	11$			; If pointer is NULL, then crash
+	$POP	R2			; Restore R2
+	MOV	R0,DCTDV1(R2)		; Store a pointer to my net address
+	MOV	R0,DCTDV1(R1)		; Store the pointer in both DCT's
+	MOV	#MyAddr,R3		; Set up source pointer for copy
+	MOV	#3,R1			; Only copy 3 words
+4$:	MOV	(R3)+,(R0)+		; Copy data
+	SOB	R1,4$			; Loop
+
+	MOV	#<CM.ONL*256.>,@DCTCSR(R2)	; Go online
+5$:	TSTB	@DCTCSR(R2)		; check
+	BPL	5$			; wait for it to finish also
+
+10$:	$POP	R3,R1,R0		; Restore registers
+	CLR	DCTIRQ(R2)		; Must start out as 0
+	BIS	#DF.INI,DCTFLG(R2)	; Mark as inited
+	BIC	#DF.OFL,DCTFLG(R2)	; CLEAR OFF-LINE STATUS
+	RET				; and return
+
+11$:	BUGHLT	<Couldn't get storage for EtherNet address>
+
+
+;;;
+;;; .ISIEN -- Initiate input
+;;; Called R0 -- IORB
+;;;	   R2 -- Input DCT
+;;;
+FN.IN=12				; Function code for "start input"
+.isien:	$PUSH	R0,R2			; Save registers
+	MOV	#FN.IN,IRFCN(R0)	; Function is start input
+	MOV	DCTLNK(R2),R2		; Get the linked DCT
+	MOV	R0,DCTIRQ(R2)		; Set input request
+	MOV	R2,R0			; DCT in the right place
+	CALL	NXTCMD			; Start it if possible
+	$POP	R2,R0			; Restore registers
+	RET				; And return
+
+
+;;;
+;;; .osien -- Initate output
+;;; R0 -- IORB
+;;; R2 -- Output (Command) DCT
+;;;
+.osien:	$PUSH	R0			; Save
+	MOV	R2,R0			; put in right register
+	CALL	NXTCMD			; start command if possible
+	$POP	R0			; restore
+	RET
+
+
+;;;
+;;; .itien -- Receive done interrupt
+;;; R0 -- Input DCT
+;;;
+.itien:	$PUSH	R1,R2			; Save DCT, some registers
+	MOV	DCTQH(R0),R2		; and IORB
+	BEQ	10$			; None
+	MOV	IRUVA(R2),R1		; Get user address
+	BITB	#3,(R1)			; Check result (alignment or CRC error)
+	BEQ	1$
+	MOV	#I.ERR,IRSTA(R2)	; set error flag if so
+1$:	MOV	2(R1),IRBX(R2)		; Set bytes transfered	
+	ADD	#4,IRUVA(R2)		; Skip the garbage
+	SUB	#4,IRBX(R2)		; And disinclude from count also
+	$POP	R2,R1			; Restore
+	JMP	$IOCMP			; Do I/O completion
+
+10$:	BUGHLT	<Ethernet Invalid receive interrupt>
+
+
+
+;;;
+;;; .otien -- Command done interrupt
+;;;
+.otien:	BIC	#DF.CIP,DCTFLG(R0)	; Clear command in progress
+	BIT	#DF.IIP,DCTFLG(R0)	; was command from input side?
+	BEQ	10$			; No
+
+	CLR	DCTIRQ(R0)		; Yes, clear request
+	BIC	#DF.IIP,DCTFLG(R0)	; and flag
+	BR	30$			; and try for a "real" command
+	
+;;; Here if command done for our IORB
+10$:	$PUSH	R1,R2			; Save registers
+	MOV	DCTQH(R0),R2		; Get IORB
+	BEQ	20$			; Error
+	MOVB	@DCTCSR(R0),R1		; get result
+	BIC	#^C17,R1		; Mask off result
+	BEQ	12$			; Success
+	BIS	#I.ERR,R1		; Set error bit
+12$:	MOV	R1,IRSTA(R2)		; Set result
+	MOV	@DCTCSR(R0),R1		; Clear CSR
+	$POP	R2,R1			; restore registers
+
+	$PUSH	#340,#30$,R0		; simulate interrupt
+	JMP	$IOCMP			; Do I/O completion
+
+30$:	CALL	NXTCMD			; keep things moving
+
+	$POP	R0			; and back to interruptee
+	RTI
+
+;;; Here on spurious interrupt
+20$:	BUGHLT	<Ethernet Invalid command done interrupt>
+
+
+;;;
+;;; NXTCMD -- Give the next command to the device
+;;;
+;;; first checks for pending input requests. Else handles output 
+;;; R0 -- "output" DCT
+;;;
+NXTCMD:	BIT	#DF.CIP,DCTFLG(R0)	; Command already in progress?
+	BNE	21$			; Yes, do nothing now
+	$PUSH	R2,R1
+	MOV	DCTIRQ(R0),R2		; Anything on the input Q?
+	BEQ	10$			; No
+	BIS	#DF.IIP,DCTFLG(R0)	; Flag an input request going
+	BR	12$			; join below
+
+10$:	MOV	DCTQH(R0),R2		; Anything on command Q?
+	BEQ	20$			; Nothing at all
+
+12$:	MOV	DCTCSR(R0),R1		; Get CSR
+	MOV	IRUVA(R2),IENADR(R1)	; Set DMA addess
+	CMP	IRBR(R2),#EMINSZ	; The ethernet has a minimum pkt size
+	BGE	13$			; If not big enough then 
+	MOV	#EMINSZ,IENCNT(R1)	;   load the minimum size
+	BR	14$			;  Else
+13$:	MOV	IRBR(R2),IENCNT(R1)	;   load the given size
+14$:	MOV	IRFCN(R2),R1		; Get function
+	MOV	IENFCN(R1),@DCTCSR(R0)	; set function bits
+	BIS	#DF.CIP,DCTFLG(R0)	; Mark command in progress
+20$:	$POP	R1,R2			; Restore
+21$:	RET				; and return
+
+;;;
+;;; IENFCN -- Function -> Command table, indexed
+;;; by <function code> (all codes are even)
+;;;
+IENFCN:	<CM.XMT*256.>!C.RCVI!C.CMDI	; (0) Start output
+	<CM.RST*256.>!C.RCVI!C.CMDI	; (2) Reset the interface
+	<CM.STA*256.>!C.RCVI!C.CMDI	; (4) Return local address
+	<CM.LDG*256.>!C.RCVI!C.CMDI	; (6) Load multicast address
+	<CM.DLG*256.>!C.RCVI!C.CMDI 	; (10) Delete multicast address
+	<CM.RCV*256.>!C.RCVI!C.CMDI	; (12) Start input
+	<CM.STA*256.>!C.RCVI!C.CMDI	; (14) return statistics
+
+$MIEBT:
+
+StatLen	= 66.				; length of interlan status buffer
+
+StatBuf:
+	.BLKB	4.			; ignore
+MyAddr:	.BLKB	6.			; This is my address
+	.BLKB	StatLen-6.-4.		; the rest of the status info
+
+	.END				; End of Interlan Ethernet driver

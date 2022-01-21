@@ -1,0 +1,377 @@
+	.TITLE	TV4DBG - TCP debugging tool
+
+	.INSRT	../../mos/moscnf-1.sml
+	.INSRT	../../mos/mosmac.sml
+
+	.INSRT	utlmac-1.sml
+	.INSRT	tv4cnf-2.sml
+	.INSRT	tv4mac-1.sml
+	.INSRT	tv4tbl-1.sml
+	.INSRT	pktdef-1.sml
+
+	
+	.GLOBL	$TRACE			;Trace enqueueing routine
+	.GLOBL	$NOUT			;Number output routine
+	.GLOBL	TRACE			;Packet tracing routine
+	.GLOBL	TYPE1			;Error msg tracing routine
+
+	.ENABL	ISD
+
+	.CSECT	TCPI
+
+	.SBTTL	TRACE - Construct a packet printing trace element
+
+;
+; Construct a trace queue element.  Format of trace queue elements are:
+;
+;	Queue pointer (used by $TRACE)
+;	length of block
+;	printing routine
+;	printing flags
+;	pseudo-header
+; 	TCP header
+;	TCP text
+;
+; This element is added to the trace queue to be printed out by the
+; PKTPNT routine
+;
+; Called with:	R1  - Printing flags
+;		HDR - Pointer to pseudo-header
+;
+
+TRACE:	$PUSH	R0,R2,R3
+	MOV	PH.DL(HDR),R0		;Get length of data part
+	BIT	#TF.SWB,R1		;Packet swapped?
+	BNE	1$			;If so, skip
+	SWAB	R0			;swap data length
+1$:	ADD	#PH.LEN,R0		;add length of pseudo-header
+	ADD	#8.,R0			;  and trace block header
+	$AVS	R0			;Allocate trace block
+	$PUSH	R2
+	CLR	(R2)+			;Clear link field
+	MOV	R0,(R2)+		;Put length in block
+	MOV	#PKTPNT,(R2)+		;Put addr of printing routine
+	MOV	R1,(R2)+		;Include printing control flags
+;
+; Now copy the packet into the trace queue element
+;
+	SUB	#8.,R0			;Account for trace queue header
+	ASR	R0			;Convert to word count
+	ADC	R0			;and round up
+	$PUSH	HDR			;Save header pointer
+2$:	MOV	(HDR)+,(R2)+		;Copy data
+	$LOOP	R0,2$
+	$POP	HDR
+	$POP	R0			;Recover trace block pointer
+	CALL	$TRACE			;Add trace buffer to queue
+	$POP	R3,R2,R0
+	RET
+
+
+	.SBTTL	.	TYPE1 - add a status message to trace queue
+
+;
+; CALLED WITH:	R1  - Error code
+;
+
+TYPE1:	$PUSH	R0,R2
+	$AVS	#10.			;Allocate trace buffer
+	CLR	(R2)			;Reset link
+	MOV	R0,2(R2)		;Save buffer length
+	MOV	#MSGPNT,4(R2)		;Put in addr of msg printing routine
+	MOV	R1,6(R2)		;Copy error number
+	MOV	R2,R0			;Get buffer addr in r0
+	CALL	$TRACE			;Add buffer to trace queue
+	$POP	R2,R0
+	RET
+
+
+	.SBTTL	.	PKTPNT - Trace packet printing routine
+
+;
+; Called with:	R0 - addr of trace buffer
+;
+
+PKTPNT:	$PUSH	R0,R1,R2,R3,R4,R5
+;
+; R0,R1 - scratch
+; R2 - NOUT radix (octal)
+; R3 - loop counter
+; R4 - scratch
+; R5 - pointer to trace block
+;
+; First, swap the word fields of the packet header unless they have
+; already been swapped because of packet processing
+;
+	MOV	#8.,R2			;Set output radix to octal
+	MOV	R0,R5			;Get R5 - addr of trace buffer
+	ADD	#10,R5			;Advance to packet header
+	BIT	#TF.SWB,-2(R5)		;Header already swapped
+	BNE	1$			;If so, skip
+	SWAB	PH.DL(R5)		;Swap the data length
+	SWAB	TH.SEQ+2(R5)		;... low word of sequence number
+	SWAB	TH.ACK+2(R5)		;... low word of ACK number
+	SWAB	TH.WDW(R5)		;... window size
+	SWAB	TH.URG(R5)		;... urgent pointer offset
+1$:	BIT	#TF.RCV,-2(R5)		;Was packet received?
+	BEQ	2$			;If not, skip
+	$SOUT	#MSGRCV,#4		;Print out direction
+2$:	BIT	#TF.SND,-2(R5)		;Packet sent?
+	BEQ	3$			;If not, skip
+	$SOUT	#MSGSND,#4		;Print out direction
+3$:	BIT	#TF.ERR,-2(R5)		;Packet in error?
+	BEQ	PPADR			;If not, skip
+	$SOUT	#MSGERR,#4		;also indicate error
+;
+; Print out the INET source/destination address of the packet if the
+; TF.ADR flag is set
+;
+PPADR:	BIT	#TF.ADR,-2(R5)		;Packet print the INET addresses?
+	BEQ	PPPORT			;If not, skip
+	MOV	R5,R4			;Get pointer to packet header
+	ADD	#PH.SRC,R4		;and point to source addr
+	MOV	#4,R3			;Output addr field as 4 number
+1$:	$BOUT	#40			;Output a space
+	CLR	R0
+	BISB	(R4)+,R0		;Get source address byte
+	CALL	$NOUT			;and output
+	$LOOP	R3,1$
+	$SOUT	#MSG1,#3		;Output " ->" addr field seperator
+	MOV	R5,R4			;Get pointer to packet header
+	ADD	#PH.DST,R4		;and point to source addr
+	MOV	#4,R3			;Output addr field as 4 number
+2$:	$BOUT	#40			;Output a space
+	CLR	R0
+	BISB	(R4)+,R0		;Get destination address byte
+	CALL	$NOUT			;And output
+	$LOOP	R3,2$
+	$BOUT	#54			;Output a comma
+;
+; Next, print out the source/destination ports
+;
+PPPORT:	$BOUT	#40			;Output a space
+	MOV	TH.SP(R5),R0		;Get source port ID
+	SWAB	R0
+	CALL	$NOUT			;and output
+	$SOUT	#MSG1,#4		;Output " -> " addr field seperator
+	MOV	TH.DP(R5),R0		;Get destination port ID
+	SWAB	R0
+	CALL	$NOUT			;and output
+;
+; Next, print out the low word of the sequence number
+;
+	$BOUT	#40			;Output a space
+	MOV	TH.SEQ+2(R5),R0		;Get low word of sequence number
+	CALL	$NOUT			;and output
+	$BOUT	#40			;Output a space
+;
+; Next, intepret the TCP header control field for RST, SYN or FIN control
+; and print out any that is found
+;
+PPCTL:	MOVB	TH.CTL(R5),R4		;Get TCP control byte
+	MOV	#CTLTBL,R3		;  and pointer to CTL text table
+1$:	BIT	(R3)+,R4		;Flag in packet
+	BEQ	2$			;If not, skip
+	$SOUT	R3,#4.			;else, output it
+2$:	ADD	#4,R3			;advance to next entry
+	TST	(R3)			;Check for end of table
+	BNE	1$			;If more, skip
+;
+; Next check to see if an ACK is in the packet. If so, print out the low
+; word of the ACK sequence number
+;
+	BIT	#TC.ACK,R4		;ACK in packet
+	BEQ	3$			;If not, skip
+	$SOUT	#MSG2,#4		;Output "ACK="
+	MOV	TH.ACK+2(R5),R0		;Get low word of ACK number
+	CALL	$NOUT			;and output
+	$BOUT	#40
+;
+; Next see if this was the end of a letter
+;
+3$:	BIT	#TC.EOL,R4		;EOL in packet
+	BEQ	4$			;If not, skip
+	$SOUT	#MSG3,#4		;Output "EOL "
+;
+; Next, see if an urgent offset was in the packet.  If so, print out its
+; value
+;
+4$:	BIT	#TC.URG,R4		;Urgent data in packet
+	BEQ	5$			;If not, skip
+	$SOUT	#MSG4,#4		;Output "URG="
+	MOV	TH.URG(R5),R0		;Get urgent pointer offset
+	CALL	$NOUT			;and output
+	$BOUT	#40
+;
+; Output value of window
+;
+5$:	$SOUT	#MSG5,#4		;Output "WDW="
+	MOV	TH.WDW(R5),R0		;Get window size
+	CALL	$NOUT			;and output
+	$BOUT	#40
+;	
+; Next, check to see if any options are in the packet
+;
+PPOPTN:	MOVB	TH.HLN(R5),R3		;Get TCP header length
+	ASR	R3			;  and convert to bytes
+	ASR	R3
+	SUB	#TH.LEN-PH.LEN,R3	;Subtract size of fixed header
+	BLE	PPTXT			;If no options, skip
+	$SOUT	#MSG6,#6		;"OPTNS:" Indicate options present
+;
+; Scan through the options list and type out the options present
+;
+	MOV	R5,R4
+	ADD	#TH.LEN,R4		;Advance to start of options
+1$:	MOVB	(R4)+,R1		;Get next option code
+	BEQ	PPTXT			;If end-of-options option, skip
+	DEC	R3			;decrement count
+	CMP	R1,#1			;If padding option, ignore
+	BEQ	4$			
+	$BOUT	#'(
+	MOV	R1,R0
+	CALL	$NOUT			;print out option value
+	MOVB	(R4)+,R1		;Get length of option
+	SUB	R1,R3			;Subtract 
+	INC	R3			;and adjust
+	SUB	#2,R1			;and account for type & length bytes
+	BEQ	3$			;If none left, skip
+	$BOUT	#'-
+2$:	$BOUT	#40			;print a space
+	MOVB	(R4)+,R0		;Get option data
+	CALL	$NOUT			;and print it out
+	$LOOP	R1,2$			;and loop
+	BR	1$
+
+3$:	$BOUT	#')			;end printout of that option 
+4$:	TST	R3			;Run out of options in packet?
+	BGT	1$			;If not, continue
+	$SOUT	#MSG9,#8.		;Indicate options format error
+;
+; Calculate the amount of text in the packet
+;
+PPTXT:	MOV	PH.DL(R5),R3		;Get data length
+	BIT	#TF.TXT,-2(R5)		;Has the data length been adjusted?
+	BNE	1$			;If so, skip
+	CLR	R4
+	BISB	TH.HLN(R5),R4		;Get TCP header length
+	ASR	R4			;  and convert to bytes
+	ASR	R4
+	SUB	R4,R3			;Calculate amount of data
+1$:	TST	R3			;Check amount of data
+	BLE	PPEXT			;If none, skip
+;
+; Print out the number of bytes of user data and then display the
+; first 30 characters in the buffer.
+;
+	$SOUT	#MSG7,#4		;Output "TXT("
+	MOV	R3,R0
+	CALL	$NOUT			;... number of bytes of text
+	$SOUT	#MSG8,#2		;and "):"
+	CMP	R3,#30.
+	BLOS	2$
+	MOV	#30.,R3			;Output at most 30 characters
+2$:	ADD	#PH.LEN,R4
+	ADD	R5,R4			;Advance to start of text field
+3$:	CLR	R0
+	BISB	(R4)+,R0		;Get next character
+	CMPB	R0,#40			;Control character
+	BLO	4$			;If not, skip
+	CMPB	R0,#177			;DEL or TELNET control
+	BLO	5$			;If not, type out directly
+4$:	$PUSH	R0
+	$BOUT	#'<			;Type "<"
+	$POP	R0
+	CALL	$NOUT			;Output as octal number
+	$BOUT	#'>
+	BR	6$			;and get next char
+
+5$:	$BOUT	R0			;Output character
+6$:	$LOOP	R3,3$			;and type out all characters
+
+PPEXT:	$SOUT	#MSGCR,#2		;Ended with cr/lf
+	$POP	R5,R4,R3,R2,R1,R0
+	RET
+
+
+	.CSECT	TCPD, STATIC
+
+CTLTBL:	.WORD	TC.RST			;Table of text strings for TCP 
+	.ASCII	/RST /			;   header control flags
+	.WORD	TC.SYN
+	.ASCII	/SYN /
+	.WORD	TC.FIN
+	.ASCII	/FIN /
+	.WORD	0
+
+MSGRCV:	.ASCII	/RCV /
+MSGSND:	.ASCII	/SND /
+MSGERR:	.ASCII	/ERR /
+
+MSG1:	.ASCII	/ -> /
+MSG2:	.ASCII	/ACK=/
+MSG3:	.ASCII	/EOL /
+MSG4:	.ASCII	/URG=/
+MSG5:	.ASCII	/WDW=/
+MSG6:	.ASCII	/OPTNS:/
+MSG7:	.ASCII	/TXT(/
+MSG8:	.ASCII	/):/
+MSG9:	.ASCII	/ FMTERR!/
+MSGCR:	.ASCII	<15><12>
+
+	.CSECT	TCPI
+
+	.SBTTL	.	MSGPNT - Trace message print routine 
+
+;
+; Called with	R0 - addr of trace buffer
+;
+
+MSGPNT:	$PUSH	R0,R1,R2,R3
+	MOV	R0,R3			;Get trace buffer addr
+	ADD	#6,R3			;Advance to port table addr
+	MOV	(R3)+,R2		;Get error return code
+	ASL	R2			;Convert to double word offset
+	ASL	R2
+	CMP	R2,DBGERR		;Known error message?
+	BLO	1$			;If so, skip
+	MOV	DBGERR,R2		;Set to max error message
+1$:	$SOUT	DBGERR(R2),DBGERR+2(R2)	;Output error message
+	$SOUT	#MSGCR,#2
+	$POP	R3,R2,R1,R0
+	RET
+
+
+	.MACRO	MSG	STRNG
+	.CSECT	TCPEMS, STATIC
+..TMP1=.
+	.ASCII	/STRNG/
+..TMP2=.
+	.CSECT	TCPD, STATIC
+	.WORD	..TMP1
+	.WORD	..TMP2-..TMP1
+	.ENDM
+
+	.CSECT	TCPD, STATIC
+
+DBGERR:	.WORD	15
+	.WORD
+	MSG	<Connection ID invalid>
+	MSG	<No TCB found>
+	MSG	<Nonexistant connection>
+	MSG	<Wrong protocol number>
+	MSG	<Header too short>
+	MSG	<Packet too long>
+	MSG	<Bad checksum>
+	MSG	<Invalid RST>
+	MSG	<Invalid SYN>
+	MSG	<Invalid ACK>
+	MSG	<Option not found>
+	MSG	<Option format error>
+	MSG	<Can't allocate memory>
+	MSG	<Connection not open>
+	MSG	<Invalid error number>
+
+
+	.END
+

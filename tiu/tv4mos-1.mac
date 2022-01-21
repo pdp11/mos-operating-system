@@ -1,0 +1,1047 @@
+
+;<MOS-DEVEL>TV4MOS-1.M11.10    31-Oct-79 14:20:45    EDIT BY MATHIS
+; added some measurement counters
+;initial release
+	.TITLE	TCPMOS -- Multi-connection TCP v4 for MOS
+
+	.INSRT	../../mos/moscnf-1.sml
+	.INSRT	mosdev-1.sml
+	.INSRT	../../mos/mostbl.sml
+	.INSRT	../../mos/mosmac.sml
+	.INSRT	tv4cnf-2.sml
+	.INSRT	utlmac-1.sml
+	.INSRT	tv4mac-1.sml
+	.INSRT	tv4tbl-1.sml
+	.INSRT	inet-1.sml
+	.INSRT	pktdef-1.sml
+
+	$CNFIG
+
+	$DFIOR
+
+	$DFNCT
+
+	.LIST	CND
+	.LIST	MEB
+	.ENABL	ISD
+
+	.CSECT	TCPI
+
+
+
+	.SBTTL	Linkage to other modules
+
+;
+; Linkage to external things
+;
+	.GLOBL	$TCP			;Entry point of TCP process
+	.GLOBL	$TCBVT			;Address of TCB vector table
+	.GLOBL	$TCBQ			;TCB queue
+	.GLOBL	NULTCB			;Null TCB
+	.GLOBL	$NETBL			;Network characteristics table
+	.GLOBL	$TCPID			;Local TIU inet address
+	.IF NE,	$DEBUG!$MONTR
+	.GLOBL	$TCPMS			;TCP measurement table
+	.GLOBL	TRACE			;Packet tracing routine
+	.GLOBL	TYPE1			;Error msg tracing routine
+	.GLOBL	PPFLG			;Packet printing flag
+	.GLOBL	EPFLG			;Error msg printing flag
+	.ENDC
+;
+; Linkage to internetwork I/O routines
+;
+	.GLOBL	INETUP			;INET connection open routine
+	.GLOBL	INETIN			;INET packet receive routine
+	.GLOBL	INETIC			;INET packet receive completion 
+	.GLOBL	INETOT			;INET packet send routine
+;
+; Linkage to protocol processing and utility routines
+;
+	.GLOBL	RCVPKT			;Process received packet
+	.GLOBL	RTXCON			;Retransmission timer handler
+	.GLOBL	OPNCON			;Open connection for user
+	.GLOBL	CLSCON			;Close connection for user
+	.GLOBL	SNDCON			;Send data over connection
+	.GLOBL	RCVCON			;Data was received over connection
+;	.GLOBL	SNDCMP			;Packet output completion
+
+	.GLOBL	INIQ			;Initialize Q descriptor
+	.GLOBL	INIPKT			;Initialize packet buffer
+	.GLOBL	SNDPND			;Send pending control/data packets
+	.GLOBL	XMTPKT			;Transmit packet
+;
+; User interface entry points
+;
+	.GLOBL	$OPEN			;Open TCP connection
+	.GLOBL	$RECV			;Receive data from TCP
+	.GLOBL	$SEND			;Send data over connection
+;	.GLOBL	$STATS			;Get connection status
+	.GLOBL	$CLOSE			;Close TCP connection
+
+	.GLOBL	USRRST			;Reset user interface storage
+	.GLOBL	USRABT			;Abort connection
+	.GLOBL	USRRCV			;Handle user data in packet
+	.GLOBL	USRACK			;Process user data acks
+	.GLOBL	USRSND			;Send user data
+	.GLOBL	USRRTX			;Retransmit user data
+	
+;
+; Entry point for utility functions
+;
+	.GLOBL	GETSEQ			;Get initial sequence number
+	.GLOBL	GETPKT			;Allocate packet for TCP
+	.GLOBL	NOTIFY			;Notify user process of state change
+	.GLOBL	FRETCB			;Release TCB storage
+	.GLOBL	OUTPKT			;Output packet routine
+
+
+
+;
+; Signals from the network and timer device drivers
+;
+SG.INP	=	0			;Packet input completion
+SG.OUT	=	1			;Packet output completion
+SG.TIM	=	2			;Rtx timer signal
+;
+; Signals from the user process to the TCP
+;
+SG.OPN	=	3			;User has done an OPEN
+SG.CLS	=	4			;User has done a CLOSE
+SG.SND	=	5			;User has done a SEND
+SG.RCV	=	6			;User has done a RECV
+
+SG.MAX	=	SG.RCV			;The max tcp signal
+
+	.SBTTL	$TCP - TCP initialization code
+
+;
+; This is the main entry point for the TCP process.  The TCB queues are
+; initialized to empty, the measurement area reset, the TCB vector table
+; cleared and the network interface initialized.  After the initialization, 
+; the TCP enters a wait loop to process the signals it gets.
+;
+
+$TCP:	$GAPID				;Get our process Id
+	MOVB	R0,TCPPID		;and save away
+;
+; Initialize the TCB lists
+;
+	MOV	#$TCBQ,R0		;Initialize TCB queue
+	CALL	INIQ
+;
+; Initialize the TCP measurements area
+;
+	.IF NE,	$DEBUG!$MONTR
+	MOV	#$TCPMS,R1		;Get pointer to measurement table
+	MOV	#TCPMSL/2,R2		;Get table word length
+1$:	CLR	(R1)+			;Clear out table entry
+	$LOOP	R2,1$			;and do all of table
+	.ENDC
+;
+; Initialize the TCB vector table
+;
+	MOV	#$TCBVT,R1		;Get addr of tcb table
+	MOV	(R1)+,R2		;And its length
+2$:	CLR	(R1)+			;Clear out tcb pointer
+	$LOOP	R2,2$
+;
+; Initialize the network interface
+;
+	CALL	INETUP			;Initialize the network
+	MOV	#SG.INP,R0		;Get opcode for receiving packets
+	CALL	INETIN			;  and start input
+
+	$STIME	#SG.TIM,#0,#1*60.	;Start timer for once a second
+
+	.SBTTL	TCP process dispatching loop
+
+;
+; Enter wait loop, processing signals as they arrive
+;
+3$:	$WAIT				;Wait for some external stimulus...
+					; R0 <- signal opcode
+					; R1 <- signal data
+	CMPB	R0,#SG.MAX		;Valid opcode
+	BHI	4$			;If not, error
+	BIC	#^C377,R0		;Clear out PID from signal opcode
+	ASL	R0			;Convert signal opcode to word index
+	CALL	@TCPOPC(R0)		;Call signal processing routine
+	BR	3$			;And then back to wait for more work
+
+4$:	BUGHLT	<Invalid signal opcode>
+	BR	3$
+
+
+TCPOPC:	.WORD	PKTIN			;Packet input processing routine
+	.WORD	PKTFVS			;Release output packet buffer
+	.WORD	RTXTIM			;Handle rtx timer signal
+	.WORD	OPEN			;Open user connection
+	.WORD	CLOSE			;Close user connection
+	.WORD	SEND			;User has done a SEND
+	.WORD	RECV			;User has done a RECV
+
+	.SBTTL
+	.SBTTL	I/O and timer handling routines
+	.SBTTL	.	PKTIN - Packet input processing routine
+
+;
+; The packet input processing routine is called when a new packet is
+; received from the network.  First we check the IORB transfer status
+; and handle any errors.  Next, call INETIC, the internetwork input 
+; completion routine to check the local & inet header.
+;
+
+PKTIN:	TST	IRSTA(R1)		;Input complete OK?
+	BMI	12$			;If not, check error condition
+	$PUSH	R1			;Remember IORB pointer
+	CALL	INETIC			;Handle network input completion
+					; R2 -> Start of pseudo header
+	BNE	1$			;If control packet, ignore
+	MOV	R2,HDR			;Get ptr to TCP/pseudo headers
+	.IF NE,	$DEBUG!$MONTR
+	BIT	#TF.RCV,PPFLG		;Receive packet printing on?
+	BEQ	3$			;If not, skip
+	MOV	#TF.RCV,R1		;Indicate received packet
+	CALL	TRACE			;else, print this packet
+3$:
+	.ENDC
+	CALL	RCVPKT			;Handle the received packet
+	.IF NE,	$DEBUG!$MONTR
+	TST	R0			;Any errors?
+	BEQ	4$			;If not, skip
+	BIT	#TF.ERR,PPFLG		;Error packet printing on?
+	BEQ	4$			;If not, skip
+	MOV	#TF.RCV!TF.ERR,R1	;Indicate received/error packet
+	CALL	TRACE			;else, print this packet
+4$:	TST	EPFLG			;Error logging on
+	BEQ	5$			;If not, skip
+	CALL	TYPE1			;and report error condition
+5$:
+	.ENDC
+1$:	$POP	R1			;Recover pkt pointer
+2$:	MOV	$NETBL+NT.SL,R0		;Get max size of send packet
+	$FVS	R0,R1			;Release packet
+	MOV	#SG.INP,R0		;Get opcode for receiving packets
+	CALL	INETIN			;Reissue input
+	RET
+
+12$:	BR	2$
+
+	.SBTTL	.	PKTFVS - Packet output completion
+
+;
+; PKTFVS - Release outgoing packet buffer after network I/O completion
+;
+; Called with:	R1 - address of packet area
+;
+
+PKTFVS:	MOV	IRUSR1(R1),TCB		;Get pointer to TCB
+	DEC	USECNT(TCB)		;Decrement TCB use counter
+	TST	IRSTA(R1)		;Output complete OK?
+	BMI	3$			;If not, check error condition
+1$:	MOV	$NETBL+NT.SL,R0		;Get max size of send packet
+	$FVS	R0,R1			;Release packet
+	CMP	TCB,#NULTCB		;Special null TCB?
+	BEQ	2$			;If so, just exit
+	CALL	SNDPND			;Send any packets queued
+2$:	RET
+
+3$:	BR	1$
+
+	.SBTTL	.	RTXTIM - Handle retransmission timer signal
+
+;
+; RTXTIM - Handle retransmission timer signal
+;
+
+RTXTIM:	MOV	#$TCBVT,R0		;Get addr of TCB vector table
+	MOV	(R0)+,R1		;  and its length
+1$:	MOV	(R0)+,TCB		;Get ptr to next TCB
+	BEQ	2$			;If empty table slot, skip
+	$PUSH	R0,R1
+	CALL	RTXCON			;Check if need to retransmit
+	$POP	R1,R0
+2$:	$LOOP	R1,1$			;and scan all TCBs
+	$STIME	#SG.TIM,#0,#1*60.	;reset timer
+	RET
+
+	.SBTTL	.	User interface signal handlers
+
+
+OPEN:	MOV	R1,TCB			;Signal data is TCB pointer
+	DEC	USECNT(TCB)		;Signal received, dec counter
+	CALL	OPNCON
+	RET
+
+SEND:	MOV	R1,TCB			;Signal data is TCB pointer
+	DEC	USECNT(TCB)		;Signal received, dec counter
+	CALL	SNDCON
+	RET
+
+RECV:	MOV	R1,TCB			;Signal data is TCB pointer
+	DEC	USECNT(TCB)		;Signal received, dec counter
+	CALL	RCVCON
+	RET
+
+CLOSE:	MOV	R1,TCB			;Signal data is TCB pointer
+	DEC	USECNT(TCB)		;Signal received, dec counter
+	CALL	CLSCON
+	RET
+
+	.SBTTL
+	.SBTTL	User interface routines
+	.SBTTL	.	$OPEN - Open connection routine
+
+;
+; $OPEN - Open TCP connection routine
+;
+; Called with:	R1 - pointer to connection parameter block
+;
+;				+-------------------+
+;				! Local port ID     !
+;				+---------+---------+
+;				!         ! FGN Net !
+;				+         +---------+
+;				! Foreign TCP ID    !
+;				+-------------------+
+;				!		    !
+;				+---------+---------+
+;				! Foreign port ID   !
+;				+-------------------+
+;
+; Returns with:	R0 - return code
+;			= 0 - If accepted
+;			= 1 - If can't allocate TCB
+;			= 2 - If no room in TCBVT
+;
+
+$OPEN:	$PUSH	R1,R2,R5
+	CALL	CVCON			;See if connection already exists
+	BNE	4$			;If so, return error 1
+	MOV	#$TCBVT,R5		;Get pointer to vector table
+	MOV	(R5)+,R0		;and number of entries
+1$:	TST	(R5)+			;This slot free
+	BEQ	2$			;If so, insert it here
+	$LOOP	R0,1$			;Search all of table
+	MOV	#2,R0			;Indicate connection table full error
+	BR	3$			;and exit
+
+2$:	$LOG	NU.OPN			;Count number of user OPEN calls
+	$AVS	#TCBLEN			;Allocate the TCB
+	TST	R0			;Check result
+	BEQ	4$			;If an error, skip
+	MOV	R2,-(R5)		;Put TCB pointer into table
+	MOV	R2,TCB
+	MOV	$TCPID,LADDR(TCB)	;Set local address
+	MOV	$TCPID+2,LADDR+2(TCB)
+	MOV	(R1)+,LPORT(TCB)	;Set local port ID
+	MOVB	(R1)+,FADDR+ID.NET(TCB)	;... foreign net
+	MOVB	(R1)+,FADDR+ID.HI(TCB)	;... TCP ID high byte
+	MOV	(R1)+,FADDR+ID.MID(TCB)	;... TCP mid & low bytes
+	TST	(R1)+
+	MOV	(R1)+,FPORT(TCB)	;... foreign port ID
+	CLR	STATE(TCB)		;Reset state flags
+	CLR	USECNT(TCB)		;  and TCB use counter
+	$GAPID				;Get user's process id
+	MOVB	R0,USRPID(TCB)		;and save away
+	INC	USECNT(TCB)		;Bump use counter
+	$SGNLI	TCPPID,#SG.OPN,TCB	;Signal TCP process
+	CLR	R0			;Set return code to 'ACCEPTED'
+3$:	$POP	R5,R2,R1
+	RET
+
+4$:	MOV	#1,R0			;Connection already open error
+	BR	3$
+
+
+	.SBTTL	.	$SEND - Send data over TCP connection
+
+;
+; $SEND - Send data over connection
+;
+; Called with:	R0 - send byte count
+;		R1 - pointer to user buffer
+;		R2 - offset into user buffer for end of urgent data
+;			0 = no urgent data in message
+;
+; Returns with:	R0 - return code
+;
+
+$SEND:	$PUSH	R1,R2,R5
+	$LOG	NU.SND			;Count number of user send calls
+	CALL	CVCON			;Convert con ID into TCB address
+	BEQ	2$			;If not defined, exit
+	BIT	#ST.SND,STATE(TCB)	;Connection usable for sending data?
+	BEQ	2$			;If not, exit
+	TST	SNDBR(TCB)		;Send still outstanding?
+	BNE	2$			;If so, exit
+	MOV	R0,SNDBR(TCB)		;Else, remember byte count
+	BEQ	2$			;Zero byte count not allowed
+	MOV	R1,SNDUVA(TCB)		;  and buffer address
+	INC	USECNT(TCB)		;Bump TCB use counter
+	TST	R2			;Chk whether urgent data
+	BLE	3$			;No
+	MOV	SNDSEQ+2(TCB),R1	;Compute SNDUP  offset into unacked 
+	MOV	SNDSEQ(TCB),R0		; and unsent data for end of urgent msg
+	SUB	LWESEQ+2(TCB),R1	;SNDUP = SNDSEQ - LWESEQ + R2
+	SBC	R0
+	SUB	LWESEQ(TCB),R0
+	BNE	2$			;SNDSEQ - LWESEQ > 16 bits (crazy)
+	ADD	SNDBR(TCB),R1
+	MOV	R1,SNDUP(TCB)
+3$:	$SGNLI	TCPPID,#SG.SND,TCB	;Notify tcp of user send request
+	CLR	R0			;Indicate no errors
+1$:	$POP	R5,R2,R1
+	RET
+
+2$:	MOV	#1,R0			;Set error return code
+	BR	1$			;And exit
+	.SBTTL	.	$RECV - Receive data into user buffer
+
+;
+; $RECV - Receive data into user buffer
+;
+; Called with:	R0 - receive buffer size
+;		R1 - receive buffer pointer
+;
+; Returns with:	R0 - receive byte count
+;
+
+$RECV:	$PUSH	R1,R3,R4,R5
+	$LOG	NU.RCV			;Count number of user receive calls
+	MOV	R0,R3			;Remember buffer length
+	CLR	R0			;Reset bytes returned counter
+	JSR	PC,CVCON		;Convert con id into tcb pointer
+	BEQ	7$			;Exit if none exists
+	BIT	#ST.RCV,STATE(TCB)	;Connection usable for receiving data
+	BEQ	7$			;If not, exit
+	MOV	RSMHD(TCB),R4		;Get ptr to head of reassembly buf
+	TST	RCVUP(TCB)		;Received urgent text?
+	BEQ	3$			;If not, enter move loop
+	CMP	R3,RCVUP(TCB)		;Asking for more data than is urgent?
+	BLOS	3$			;If not, enter move loop
+	MOV	RCVUP(TCB),R3		;Else, limit user to urgent data
+	BR	3$			;and enter move loop
+;
+; R0 - returned byte count
+; R1 - user buffer pointer
+; R3 - user buffer size
+; R4 - reassembly buffer pointer
+;
+1$:	CLRB	(R4)+			;Reset flag word to empty
+	MOVB	(R4)+,(R1)+		;Move byte into user buffer
+	CMP	R4,RSMEND(TCB)		;Reached end of buffer?
+	BLO	2$			;If not, skip
+	MOV	RSMFNT(TCB),R4		;Else, reset buffer pointer to front
+2$:	INC	R0			;Transfered 1 more character
+3$:	BITB	#RF.TXT,(R4)		;Next byte contains user text?
+	BEQ	4$			;If not, finished moving text
+	CMP	R0,R3			;Check bytes xfred with buffer length
+	BLO	1$			;If room left, loop
+4$:	ADD	R0,RCVSEQ+2(TCB)	;Advance receive left window edge
+	ADC	RCVSEQ(TCB)
+	TST	RCVUP(TCB)		;Urgent data received
+	BEQ	5$			;If not, skip
+	SUB	R0,RCVUP(TCB)		;Update receive urgent pointer
+5$:	BITB	#RF.TXT,(R4)		;User data at head of reassembly buf
+	BEQ	6$			;If not, don't signal user
+	CALL	SIGUSR			;Signal user about more data
+6$:	MOV	R4,RSMHD(TCB)		;Update reassembly buffer head pointer
+	$PUSH	R0			;Save return byte count
+	INC	USECNT(TCB)		;Bump TCB use counter
+	$SGNLI	TCPPID,#SG.RCV,TCB	;Indicate we have done a receive
+	$POP	R0
+7$:	$POP	R5,R4,R3,R1
+	RET
+
+	.SBTTL	.	$CLOSE - CLOSE TCP CONNECTION
+
+;
+; $CLOSE - CLOSE TCP CONNECTION
+;
+
+$CLOSE: $PUSH	R0,R5
+	CALL	CVCON			;Convert conid into tcb pointer
+	BEQ	1$			;If invalid, exit
+	$LOG	NU.CLS			;Count number of user close calls
+	INC	USECNT(TCB)		;Bump TCB use counter
+	$SGNLI	TCPPID,#SG.CLS,TCB	;Signal tcp that user wants to close
+1$:	$POP	R5,R0
+	RET
+
+	.SBTTL	.	CVCON - CONVERT CONNECTION ID INTO TCB POINTER
+
+;
+; CVCON - CONVERT CONNECTION ID INTO TCB POINTER
+;
+;	RETURNS WITH:	R5 (TCB) - ADDRESS OF TCB
+;
+
+CVCON:	$PUSH	R0,R1,R2
+	$GAPID				;Get user pid
+	MOV	#$TCBVT,R2		;Get table address
+	MOV	(R2)+,R1		;and number of entries
+1$:	MOV	(R2)+,TCB		;Get next tcb pointer
+	BEQ	2$			;If zero, skip
+	CMPB	R0,USRPID(TCB)		;Right tcb for user process?
+	BEQ	3$			;If so, that's it
+2$:	$LOOP	R1,1$			;Else, look at next
+	CLR	TCB			;And indicate we failed
+3$:	$POP	R2,R1,R0
+	TST	TCB			;Set return code for caller
+	RET
+
+	.SBTTL
+	.SBTTL	User interface protocol utilities
+	.SBTTL	.	USRRST - Reinitialize user interface storage
+;
+; USRRST - Initializes user interface storage after allocation of TCB
+;
+; Called with:	TCB - address of active tcb
+;
+
+USRRST:	$PUSH	R0,R1
+	CLR	SNDBR(TCB)		;Reset send byte count
+	CLR	SNDUP(TCB)		;... send urgent pointer
+	CLR	RTXCNT(TCB)		;... count of bytes in retrans Q
+	MOV	TCB,R0			;Get address of tcb
+	ADD	#RTXBUF,R0		;Advance to point to rtx buffer
+	MOV	R0,RTXFNT(TCB)		;Initialize front pointer
+	MOV	R0,RTXHD(TCB)		;  and queue head pointer
+	MOV	R0,RTXTL(TCB)		;Reset tail pointer to make empty
+	ADD	#RTXLEN*2,R0		;Advance to point 1 past buffer end
+	MOV	R0,RTXEND(TCB)		;And initialize  end pointer
+;
+; Now initialize the reassembly buffer
+;
+	MOV	TCB,R0			;Get address of tcb
+	ADD	#RSMBUF,R0		;Advance to point to reassembly buf
+	MOV	R0,RSMFNT(TCB)		;Initialize front pointer
+	MOV	R0,RSMHD(TCB)		;  and head pointer
+	MOV	R0,RSMTL(TCB)		;Reset tail pointer to make empty
+	MOV	#RSMLEN,R1		;Get length of buffer
+1$:	CLR	(R0)+			;Reset entry, and advance to next
+	$LOOP	R1,1$			;And reset every entry
+	MOV	R0,RSMEND(TCB)		;Initialize end pointer
+	$POP	R1,R0
+	RET
+
+	.SBTTL	.	USRABT - Abort processing
+
+;
+; USRABT is called to clean-up the user interface when the connection is 
+; to be aborted.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+USRABT:	TST	SNDBR(TCB)		;Send outstanding?
+	BEQ	1$			;If not, skip
+	BIC	#FL.TXT,WORK(TCB)	;Reset send text flag
+	$PUSH	R0,R1
+	$SGNLI	USRPID(TCB),#SG.SC,#0	;Signal user of send completion
+	$POP	R1,R0
+	CLR	SNDBR(TCB)		;Indicate send completed
+1$:	RET
+
+
+	.SBTTL	.	USRRCV - Handle received user data in a packet
+
+;
+; USRRCV is called by the TCP protocol process to handle user data contained 
+; in a received packet.  
+;
+; Called with:	TCB - Pointer to active TCB
+;		HDR - Pointer to TCP header
+;
+
+USRRCV:	$PUSH	R0,R1,R2,R3
+;
+; First we need to calculate the offset from the left window edge of the
+; data.
+;
+; R3 - size of reassembly buffer
+; R2 - amount of text in packet
+; R1 - low word of offset
+; R0 - hi word of offset
+;
+	MOV	#RSMLEN,R3		;Get size of reassembly buffer
+	MOV	PH.DL(HDR),R2		;  and amount of text in packet
+	MOV	TH.SEQ(HDR),R0		;Get packet sequence number
+	MOV	TH.SEQ+2(HDR),R1
+	BITB	#TC.SYN,TH.CTL(HDR)	;SYN also in packet?
+	BEQ	1$			;If not, skip
+	ADD	#1,R1			;Advance packet seq number
+	ADC	R0
+1$:	SUB	RCVSEQ+2(TCB),R1	;Subtract receive left window edge
+	SBC	R0
+	SUB	RCVSEQ(TCB),R0
+	BNE	2$			;If hi order not zero, text lies
+					; to the left outside window
+;
+; Start of the text lies to the right of receive left window edge.  Start 
+; moving text from the packet into the reassembly buffer indexed by the 
+; "offset."  The amount to move is the minimum of the buffer length minus 
+; offset and the amount of data in the packet.
+;
+	CMP	R1,R3			;Check offset into buffer vs. length
+	BHIS	9$			;If outside buffer, don't move any
+	SUB	R1,R3			;Subtract offset leaving space left 
+	CMP	R2,R3			;Compare amount of text vs space left
+	BLOS	4$			;If text less, skip
+	MOV	R3,R2			;else, transfer only space left
+	BR	4$
+;
+;   The start of the text lies to the left outside the receive left window 
+; edge.  Start moving text from the packet index by the "offset" into the 
+; reassembly buffer at its head.  The amount to move is the minimum of the 
+; amount of text minus offset and the buffer length.
+;
+2$:	CMP	R0,#-1			;Check high order difference
+	BNE	9$			;If not all 1's, too far to the left
+	NEG	R1			;Convert offset to positive count
+	SUB	R1,R2			;Subtract offset from amount of text
+					;  leaving amount of text in window
+	BLOS	9$			;If all of pkt outside window, abort
+	CMP	R2,R3			;Compare amount in window vs buff size
+	BLOS	3$			;If less, skip
+	MOV	R3,R2			;Move minumum of two amounts
+3$:	MOV	R1,R0			;Set offset into text of packet
+	CLR	R1			;Start at head of reassembly buffer
+;
+; R0 - offset into text field of packet
+; R1 - pointer into reassembly buffer
+; R2 - amount of text to move from packet into buffer
+; R3 - scratch
+;
+; Check to see if the received data lies at the left window edge and if it
+; is new data.  If so, signal the user process that it can receive some more 
+; data.  The signal sent depends on whether or not the received data is 
+; urgent.
+;
+4$:	TST	R1			;Check offset from window edge
+	BNE	6$			;If non-zero, skip
+	BITB	#RF.TXT,@RSMHD(TCB)	;Text currently at window edge
+	BNE	6$			;If so, already signalled user
+	CALL	SIGUSR			;Else, signal about new data
+;
+; Now move text from the packet (pointed to by R2) into the reassembly 
+; buffer (pointer to by R1), setting the "text" flag.  Move the amount in R0 
+;
+6$:	$PUSH	R2			;Save amount to move
+	CALL	GTPTR			;Get pointer to text field into R2
+	ADD	R0,R2			;Add in offset into text field
+	$POP	R0			;Get number of bytes to move
+	ASL	R1			;Convert offset from byte to word
+	ADD	RSMHD(TCB),R1		;Add in queue head pointer
+7$:	CMP	R1,RSMEND(TCB)		;Reached end of buffer?
+	BLO	8$			;If not, pointer ok
+	SUB	#RSMLEN*2,R1		;Else, wrap around to the front
+8$:	MOVB	#RF.TXT,(R1)+		;Set flag to 'text present'
+	MOVB	(R2)+,(R1)+		;Move the text byte into buffer
+	$LOOP	R0,7$			;And process all of it
+;
+; Check to see if this was the end of a letter.  If so, set the end-of-letter
+; bit in the flag associated with the last text byte and do the necessary
+; rubber-EOL adjustments of a buffer size was specified
+;
+	BITB	#TC.EOL,TH.CTL(HDR)	;Was this the end of a letter
+	BEQ	10$			;If not, skip
+	BISB	#RF.EOL,-2(R1)		;Set EOL flag in buffer
+					;Rubber EOL not implemented yet
+10$:	BIC	#FL.DUP,WORK(TCB)	;Indicate pkt not a duplicate
+	$LOG	NR.TXT			;Count number of text packet received
+9$:	$POP	R3,R2,R1,R0
+	RET
+
+	.SBTTL	.	SIGUSR - Signal user about more data
+
+;
+; SIGUSR is called to signal the user process that more data is available
+; to be received.  The signal sent indicates whether or not the data is
+; urgent
+;
+
+SIGUSR:	$PUSH	R0,R1
+	MOV	#SG.DAT,R0		;Indicate that new data was received
+	TST	RCVUP(TCB)		;In receive urgent mode?
+	BEQ	1$			;If not, skip
+	MOV	#SG.URG,R0		;Else, indicate received urgent data
+1$:	CALL	NOTIFY
+	$POP	R1,R0
+	RET
+
+
+	.SBTTL	.	USRACK - Process received acknowledgement
+
+;
+; USRACK is called by the TCP protocol process to handle received 
+; acknowledgements for data that was sent.
+;
+; Called with:	TCB - Pointer to TCB
+;		R1 - Number of bytes of text that was Acked
+;
+; Returns with:	R1 - Number of bytes not ACKing text sent
+;
+
+USRACK:	$PUSH	R0
+	MOV	R1,R0			;Get # of bytes ACKed
+	CMP	R0,RTXCNT(TCB)		;and number of bytes in RTX buffer
+	BLOS	1$			;If # acked less, skip
+	MOV	RTXCNT(TCB),R0
+1$:	SUB	R0,RTXCNT(TCB)		;Update # of bytes in buffer
+	BNE	2$			;If still some left, skip
+	BIC	#RX.TXT,RTXFLG(TCB)	;Else, clear rtx text flag
+2$:	SUB	R0,R1			;Get number of bytes not ACKing text
+	ASL	R0			;Convert number of bytes to words
+	ADD	R0,RTXHD(TCB)		;Advance queue head pointer
+	CMP	RTXHD(TCB),RTXEND(TCB)	;Reached end of buffer?
+	BLO	3$			;If not, exit
+	SUB	#RTXLEN*2,RTXHD(TCB)	;Else, wrap around to front of buffer
+3$:	$POP	R0
+	RET
+
+	.SBTTL	.	USRSND - Packetize user data
+
+;
+; USRSND is called by the TCP protocol process to packetize user data into
+; the packet provided.  A seperate routine is called for packetizing data
+; for retransmission.
+;
+; Called with:	TCB - Pointer to TCB
+;		HDR - Pointer to start of text area in packet
+;
+USRSND:	$PUSH	R0,R1,R2,R3
+;
+; First get send byte count and see if there is any space left in the send 
+; window.  If there isn't, just exit
+;
+	MOV	SNDBR(TCB),R1		;Get user send buffer length
+	MOV	SNDWS(TCB),R0		;Get send window size
+	BEQ	10$			;If window zero, can't send text
+	SUB	RTXCNT(TCB),R0		;Subtract amount used, leaving space
+	BLOS	10$			;If no room, exit
+;
+; If there is space in the send window, determine the minimum of: send
+; window space left, amount of user data to send, and rtx buffer space left.
+;
+	CMP	R1,R0			;Check byte count vs window space
+	BLOS	1$			;If byte count less, skip
+	MOV	R0,R1			;R1 <- min (byte count, window space)
+1$:	MOV	#RTXLEN,R0		;Get max byte count = length of buffer
+	SUB	RTXCNT(TCB),R0		;Subtract amount used up
+	BEQ	10$			;If no room, exit
+	CMP	R1,R0			;Compare vs window space
+	BLOS	2$			;If less, skip
+	MOV	R0,R1			;R1 = min (wdw & rtx space, byte count)
+;
+; Now construct a packet and copy the user data into it and into the 
+; retransmission queue and send the packet.  If all of the user's data was 
+; sent, then signal him of send completion.
+;
+2$:	CALL	INIPKT			;Initialize internet header
+	BNE	10$			;If can't get packet, exit
+	CALL	GTPTR			;Get pointer to text part of packet
+	CMP	R1,R3			;Compare vs maximum send text length
+	BLOS	4$			;If less, skip
+	MOV	R3,R1			;Else, trim to max send text length
+4$:	SUB	R1,SNDBR(TCB)		;Update bytes left count
+	BNE	5$			;If not zero, then some data left
+	BIC	#FL.TXT,WORK(TCB)	;If finished, clear 'send text' flag
+	MOV	#SG.SC,R0
+	CALL	NOTIFY			;Notify user process of send complete
+5$:	$LOG	NS.TXT			;Count number of text packets sent
+	ADD	R1,RTXCNT(TCB)		;Update count of stuff in queued
+	BIS	#RX.TXT,RTXFLG(TCB)	;Indicate need to rtx text
+	ADD	R1,SNDSEQ+2(TCB)	;Advance send sequence number
+	ADC	SNDSEQ(TCB)
+	MOV	R1,PH.DL(HDR)		;Set amount of data in packet
+	MOV	R1,R3
+	MOV	RTXTL(TCB),R0		;Get pointer to tail of rtx buffer
+	MOV	SNDUVA(TCB),R1		;Get pointer to user send buffer
+;
+; Transfer data from user buffer into packet
+;
+; R0 - rtx buffer tail pointer
+; R1 - user send buffer pointer
+; R2 - packet text pointer
+; R3 - text byte count
+;
+6$:	MOVB	(R1),(R2)+		;Copy byte into packet
+	MOVB	#RF.TXT,(R0)+		;Set rtx buffer flag to 'text' present
+	MOVB	(R1)+,(R0)+		;And copy the text into the rtx buffer
+	CMP	R0,RTXEND(TCB)		;Reached end of buffer?
+	BLO	7$			;If not, skip
+	MOV	RTXFNT(TCB),R0		;Else, wrap around to the front
+7$:	$LOOP	R3,6$			;Transfer all of the text
+	MOV	R0,RTXTL(TCB)		;Update rtx buffer tail pointer
+	MOV	R1,SNDUVA(TCB)		;Update pointer into user send buffer
+	.IF NE,	$EOL
+	TST	SNDBR(TCB)		;LAST BYTE OF LETTER?
+	BNE	9$			;IF NOT, SKIP
+	CMP	R0,RTXFNT(TCB)		;POINTER JUST WRAPPED AROUND?
+	BNE	8$			;NO
+	MOV	RTXEND(TCB),R0		;ELSE, BACK UP TO END OF BUFFER
+8$:	BISB	#RF.EOL,-2(R0)		;MARK FINAL BYTE AS END OF LETTER
+	BISB	#TC.EOL,TH.CTL(HDR)	;MARK PACKET AS END OF LETTER
+	.IFF
+	BISB	#TC.EOL,TH.CTL(HDR)	;Mark packet as end of letter
+	.ENDC
+9$:	CALL	XMTPKT			;And then send the packet
+10$:	$POP	R3,R2,R1,R0
+	RET
+
+	.SBTTL	.	USRRTX - Retransmit unacknowledged user data
+
+;
+; USRRTX is called by the protocol process to construct a packet for
+; retransmitting user data.
+;
+; Called with:	TCB - pointer to TCB
+
+
+USRRTX:	$PUSH	R0,R1,R2,R3
+	CALL	INIPKT			;Initialize a packet buffer
+	BNE	6$			;If can't get buffer, exit
+	$LOG	NS.RTX			;Count number of packet retransmissions
+;
+; Since we are retransmitting the head of the retransmission queue, set the 
+; packet sequence number to the left send window edge.  
+;
+	MOV	LWESEQ(TCB),TH.SEQ(HDR)	;Set sequence number to left window
+	MOV	LWESEQ+2(TCB),TH.SEQ+2(HDR)
+	MOV	RTXHD(TCB),R0		;Get pointer to head of retrans queue
+;
+; R0 - pointer into retransmission buffer
+; R1 - packet text byte count
+; R2 - pointer into packet text field
+; R3 - max packet byte count
+;
+	CLR	R1			;Use r1 as text length counter
+	CALL	GTPTR			;Get ptr to start of text 
+					; R2 - ptr to start of text area
+					; R3 - max size of text area
+	CMP	R3,RTXCNT(TCB)		;Get min (max text/pkt byte enqueued)
+	BLOS	1$			;If less, skip
+	MOV	RTXCNT(TCB),R3		;Else round down to max send text
+;
+; Now transfer data into packet
+;
+1$:	BITB	#RF.EOL,(R0)+		;Byte at end of letter?
+	BNE	4$			;If so, finished with transfer
+	MOVB	(R0)+,(R2)+		;Transfer byte into packet
+	INC	R1			;Increase byte count
+	CMP	R0,RTXEND(TCB)		;Reached end of buffer?
+	BLO	2$			;If not, skip
+	MOV	RTXFNT(TCB),R0		;Else reset to front of buffer
+2$:	BITB	#RF.TXT,(R0)		;Next byte text?
+	BEQ	3$			;If not, finished with transfer
+	$LOOP	R3,1$			;Else, see if bytes left
+3$:	CLR	R0			;Indicate packet not end of a letter
+	BR	5$
+
+4$:	MOVB	(R0)+,(R2)+		;Transfer final byte of letter
+	INC	R1			;Bump byte count
+	MOV	#TC.EOL,R0		;Indicate packet at end of a letter
+;
+; After transfering the text, initialize the packet text length field and
+; transmit it.
+;
+5$:	MOV	R1,PH.DL(HDR)		;Insert the packet text length
+	BISB	R0,TH.CTL(HDR)		;Merge in eol marker, if present
+	CALL	XMTPKT			;And output the packet
+6$:	$POP	R3,R2,R1,R0
+	RET
+
+	.SBTTL
+	.SBTTL	Environment-specific utilities
+	.SBTTL	.	GETSEQ - Generate initial sequence number
+
+;
+; GETSEQ - Generate the initial sequence number
+;
+; Returns with:	R0,R1 - 32-bit number
+;
+
+GETSEQ:	$GETOD				;Get time of day & use as initial
+	RET				;   sequence number
+
+	.SBTTL	.	NOTIFY - Notify user process of status change
+
+;
+; Called with:	TCB - pointer to TCB
+;		R0 - Status change indicator
+;
+
+NOTIFY:	$PUSH	R0
+	SWAB	R0			;Put opcode in hi byte
+	CLRB	R0
+	BISB	USRPID(TCB),R0		;and process id in low byte
+	$SGNLI	R0,R0,R1		;Signal user process
+	$POP	R0
+	RET
+
+	.SBTTL	.	GETPKT - Allocate packet routine
+
+;
+; GETPKT is called by the TCP protocol process to allocate a packet
+; buffer.  It returns a pointer to the start of the pseudo-header area
+;
+; Called with:	TCB - pointer to TCB
+;
+; returns with:	HDR - pointer to start of pseudo-header area
+;		R0 - Return code
+;			Z=1, If packet allocated
+;			Z=0, If an error
+;
+
+GETPKT:	$PUSH	R2
+	MOV	$NETBL+NT.SL,R0		;Get max size of send packet
+	$AVS	R0			;Allocate storage from pkt buffer
+	TST	R0			;Allocate ok?
+	BEQ	2$			;If not, can't get storage error
+	MOV	R2,HDR			;Get pointer to start of buffer
+	MOV	R2,SNDIOR(TCB)		;Remember pointer to IORB
+	ADD	#IORBL,HDR		;Advance past IORB
+	ADD	$NETBL+NT.HL,HDR	; ...local network header
+	ADD	#IH.LEN-PH.LEN,HDR	; ...and past INET header
+	CLR	R0			;Indicate allocated OK
+1$:	$POP	R2
+	TST	R0
+	RET
+
+
+2$:	MOV	#ER.MEM,R0		;Can't allocate memory error
+	BR	1$			;and exit
+
+	.SBTTL	.	GTPTR - Get packet text pointer
+
+;
+; GTPTR is called to get the pointer to the start of the TCP data area
+; and the maximum possible size of the area as determined by max packet
+; size.
+;
+; Called with:	TCB - pointer to TCB
+;		HDR - pointer to packet header
+;
+; Returns with:	R2 - pointer to start of text area
+;		R3 - maximum amount of text allowed
+;
+
+GTPTR:	MOVB	TH.HLN(HDR),R2		;Get header length
+	BIC	#^C360,R2
+	ASR	R2			;Convert to bytes
+	ASR	R2
+	MOV	$NETBL+NT.SL,R3		;Get maximum packet size
+	SUB	$NETBL+NT.HL,R3		;Subtract size of network leader
+	SUB	$NETBL+NT.TL,R3		;  and trailer
+	SUB	#IH.LEN,R3		;Subtract length of INET header
+	SUB	R2,R3			;  and length of TCP header
+	ADD	#PH.LEN,R2		;Include pseudo-header
+	ADD	HDR,R2			;Advance to text field
+	RET
+
+
+	.SBTTL	.	OUTPKT - Output packet to network
+
+;
+; OUTPKT is called by the TCP protocol routines to send the packet to the
+; network.
+;
+; Called with:	TCB - pointer to TCB
+;		HDR - pointer to TCP header
+;
+
+OUTPKT:	$PUSH	R1
+	.IF NE,	$DEBUG!$MONTR
+	BIT	#TF.SND,PPFLG		;Send packet printing on?
+	BEQ	1$			;If not, skip
+	MOV	#TF.SND,R1		;Indicate send packet
+	CALL	TRACE			;print this packet
+1$:
+	.ENDC
+	INC	USECNT(TCB)		;Bump TCB usage counter
+	MOV	SNDIOR(TCB),R1		;Get pointer to IORB
+	MOV	TCB,IRUSR1(R1)		;Put TCB ptr into IORB
+	MOV	HDR,R2			;Get pointer to TCP header
+	MOV	#SG.OUT,R0		;Get output complete opcode
+	CALL	INETOT			;and output packet
+	$POP	R1
+	RET
+
+
+	.SBTTL	.	FRETCB - Free TCB storage
+
+;
+; FRETCB is called by the TCP protocol process to release the storage
+; used by a deleted TCB.
+;
+; Called with:	TCB - pointer to TCB
+;
+
+FRETCB:	$PUSH	R0,R2
+	MOV	#$TCBVT,R2		;Get pointer to TCB vector table
+	MOV	(R2)+,R0		;and number of entries
+1$:	CMP	(R2)+,TCB		;Matching TCB pointer?
+	BEQ	2$			;If so, skip
+	$LOOP	R0,1$			;Check all in table
+	BUGHLT	<Can't find TCB in TCBVT>
+
+2$:	CLR	-(R2)			;Zap TCBVT entry
+	$FVS	#TCBLEN,TCB
+	$POP	R2,R0
+	RET
+
+	.CSECT	TCPD, STATIC
+
+	.SBTTL
+	.SBTTL	TCP data area
+
+TCPPID:	.BLKW	1			;TCP process id
+
+$TCPID:	.BLKW	2			;Local inet address
+
+$TCBQ:	.BLKW	2			;Specified TCB queue descriptor
+
+	.IF NE,	$DEBUG!$MONTR
+PPFLG:	.WORD	3			;Packet printing flag
+EPFLG:	.WORD	1			;Error printing flag
+	.ENDC
+
+$TCBVT:	.WORD	$NTCON			;Number of entries in TCB vector tbl
+	.BLKW	$NTCON
+
+NULTCB:	.BLKB	TCBLEN			;Allocate null TCB for sending RSTs
+					;  on nonexistant connections
+
+	.IF NE,	$DEBUG!$MONTR
+
+	.GLOBL	R.RCV,PR.DUP,NR.NOP,PR.NOX,R.RST,NR.USN
+	.GLOBL	R.FIN,NS.RST,NS.ACK
+	.GLOBL	NU.OPN,NU.SND,NU.RCV,NU.CLS
+	.GLOBL	NR.TXT,NS.TXT,NS.RTX
+
+
+$TCPMS:					;TCP measurement area
+R.RCV:	.BLKW	1			;Received packet counter
+PR.DUP:	.BLKW	1			;Duplicate packet received
+NR.NOP:	.BLKW	1			;Null packets received
+PR.NOX:	.BLKW	1			;Pkts for non-existant connection
+R.RST:	.BLKW	1			;Number of RSTs received
+NR.USN:	.BLKW	1			;Number of unacceptable SYNs received
+R.FIN:	.BLKW	1			;FINs received
+NS.RST:	.BLKW	1			;Number of RSTs sent
+NS.ACK:	.BLKW	1			;ACK-only packets sent
+NU.OPN:	.BLKW	1			;Number of user OPEN calls
+NU.SND:	.BLKW	1			;... SEND calls
+NU.RCV:	.BLKW	1			;... RECV calls
+NU.CLS:	.BLKW	1			;... CLOSE calls
+NR.TXT:	.BLKW	1			;number of text packet received
+NS.TXT:	.BLKW	1			;and sent
+NS.RTX:	.BLKW	1			;number of text retransmissions
+
+TCPMSL	=	.-$TCPMS		;Length of table
+
+	.ENDC
+	.END
+

@@ -1,0 +1,1976 @@
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+               TERMINAL INTERFACE UNIT NOTEBOOK
+
+               VOLUME 4 - SUPPORT SOFTWARE DOCUMENTATION
+
+               April 1979
+
+
+               By: James E. Mathis
+                   Keith S. Klemba
+                   Andrew A. Poggio
+
+
+               ARPA Order No. 2302
+               Contract No. MDA903-78-C-0126
+               Effective Date:  1 November 1977
+               Expiration Date:  31 October 1979
+               SRI Project No. 6933
+
+
+
+               This research was sponsored by the Defense Advanced
+               Research Projects Agency under ARPA Order No. 2302,
+               Contract MDA903-78-C-0126, monitored by Dr. V. Cerf.
+
+               The views and conclusions contained in this document are
+               those of the authors and should not be interpreted as
+               necessarily representing the official policies, either
+               express or implied, of the Defense Advanced Research
+               Projects Agency or the United States Government.
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+                                SUMMARY
+
+
+     This manual is Volume 4 of SRI's TIU Notebook and is intended to
+
+provide documentation on the PDP-10-resident support software used in
+
+the TIU development.  The TIU Notebook describes the Terminal Interface
+
+Unit developed by SRI as it is used to connect terminals to the Packet
+
+Radio Network.  Volume 1 provides an overview of the system and is a
+
+User's Guide to the TIU.  Volume 2 documents the TIU system software and
+
+Volume 3 describes the TIU hardware configurations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   ii
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+                                CONTENTS
+
+
+
+SUMMARY .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    ii
+
+
+   I TIU PROGRAMMING SUPPORT SOFTWARE .  .  .  .  .  .  .  .  .  .     1
+
+     A.   File Storage .  .  .  .  .  .  .  .  .  .  .  .  .  .  .     2
+
+     B.   Source Preparation .  .  .  .  .  .  .  .  .  .  .  .  .     2
+
+     C.   MACN11 Cross-assembler   .  .  .  .  .  .  .  .  .  .  .     3
+
+     D.   LINK11 Cross-linker   .  .  .  .  .  .  .  .  .  .  .  .     3
+
+     E.   COMPILE Facility   .  .  .  .  .  .  .  .  .  .  .  .  .     4
+
+     F.   Program Loading .  .  .  .  .  .  .  .  .  .  .  .  .  .     4
+
+     G.   Program Debugging  .  .  .  .  .  .  .  .  .  .  .  .  .     4
+
+
+  II COMPILATION CONTROL FACILITY  .  .  .  .  .  .  .  .  .  .  .     5
+
+
+ III MACN11 CROSS-ASSEMBLER  .  .  .  .  .  .  .  .  .  .  .  .  .     8
+
+     A.   Features not yet supported  .  .  .  .  .  .  .  .  .  .     8
+
+     B.   Sundry differences .  .  .  .  .  .  .  .  .  .  .  .  .     8
+
+     C.   Language extensions   .  .  .  .  .  .  .  .  .  .  .  .     9
+
+     D.   Operating procedures  .  .  .  .  .  .  .  .  .  .  .  .    13
+
+
+  IV LINK11 CROSS-LINKER  .  .  .  .  .  .  .  .  .  .  .  .  .  .    16
+
+     A.   User Interface  .  .  .  .  .  .  .  .  .  .  .  .  .  .    16
+
+     B.   Symbol Debugging Support .  .  .  .  .  .  .  .  .  .  .    19
+
+     C.   Program Section (PSECT) Processing   .  .  .  .  .  .  .    22
+
+     D.   Multiple address spaces  .  .  .  .  .  .  .  .  .  .  .    23
+
+                                  iii
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+     E.   Additional Features   .  .  .  .  .  .  .  .  .  .  .  .    24
+
+
+   V THE LSI PROGRAM   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    26
+
+
+  VI THE XNET CROSS-NETWORK DEBUGGER  .  .  .  .  .  .  .  .  .  .    30
+
+
+ VII THE TIU LOADER-SERVER   .  .  .  .  .  .  .  .  .  .  .  .  .    30
+
+
+REFERENCES .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    31
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   iv
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                  I   TIU PROGRAMMING SUPPORT SOFTWARE
+
+
+     The development of software for the TIU is handled in a manner
+
+different than the usual industry practice of using a stand-alone
+
+development system.  These microcomputer development systems are
+
+typically single-user systems characterized by relatively inadequate
+
+software tools and insufficient computational power.  In contrast, all
+
+TIU programming support is provided on a PDP-10 TOPS-20 timesharing
+
+system.  The TOPS-20 system is a multi-user, large mainframe timesharing
+
+system with sophisticated and powerful software development tools.  The
+
+use of a large mainframe timesharing system for software development
+
+results in significant improvement in programmer productivity, as more
+
+tasks are automated and less time wasted waiting for assemblies to
+
+complete.  The important tools and facilities used in TIU software
+
+development are:
+
+
+     .  File storage of all program source and object files
+
+     .  Program text editing
+
+     .  Program cross-assembly using the MACN11 cross-assembler.
+
+     .  Object module linkage-editing using the LINK11 cross-linker.
+
+     .  Program module management using the TOPS-20 COMPILE facility.
+
+     .  Program loading using the LSI program.
+
+     .  Remote debugging via the XNET program.
+
+
+
+
+                                   1
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+     .  Automatic remote program reloading via the LDSRV program.
+
+In so far as possible, all TIU programming support software are standard
+
+products maintained commercially or by various ARPA contractors.
+
+
+A.   File Storage     ____ _______
+
+
+     The TOPS-20 system contains an extensive file management system,
+
+providing:
+
+
+     .  File names of up to 32 characters.
+
+     .  Generation numbers, automatically supplied by the system, to be
+        used to distinguish between revisions of files.
+
+     .  Reliable storage with daily and monthly tape backup of all
+        files.
+
+     .  Archival storage for unused files.
+
+Since the SRI TOPS-20 computer is connected to the ARPANET, as host SRI-
+
+KL, all TIU software (and any updates) can be easily transmitted to
+
+other users--such as BBN in Boston, Collins in Dallas, or UCL in London.
+
+
+B.   Source Preparation     ______ ___________
+
+
+     One of the most time consuming tasks of the programmer is entry and
+
+modification of program source files.  Various text editors are
+
+available on the SRI TOPS-20 timesharing system.  They range in
+
+sophistication from very simple line-oriented editor, such as NETED, to
+
+complex display-oriented editors, such as TVEDIT.  The availability of
+
+flexible, powerful text editors is important to a good programming
+
+environment.
+
+
+
+
+                                   2
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+C.   MACN11 Cross-assembler     ______ _______________
+
+
+     All TIU software is written in MACRO-11 assembler language and
+
+cross-assembled using MACN11.  MACN11 is a PDP-11 macro language cross-
+
+assembler which operates on the PDP-10 under the TOPS-10, TOPS-20, or
+
+TENEX operating systems.  With minor exceptions, MACN11 is compatible
+
+with the language accepted by MACRO-11 under DOS version 9. [1]  MACN11
+
+also provides symbol table output to support symbolic debugging.
+
+
+D.   LINK11 Cross-linker     ______ ____________
+
+
+     The TIU software is composed of several related source files that
+
+are assembled separately and combined into a single load module by a
+
+linkage editor, or linker.  The linker has the task of resolving
+
+external symbol definitions and relocating program segments.  LINK11 is
+
+used for TIU software development; it provides superior diagnostics and
+
+produces machine-readable symbol tables in the format required by the
+
+DDT and XNET symbolic debuggers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   3
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+E.   COMPILE Facility     _______ ________
+
+
+     The TOPS-20 system
+
+
+F.   Program Loading     _______ _______
+
+
+     A PDP-11 loading and control facility was developed by SRI to allow
+
+remote access to an LSI-11 from a PDP-10 timesharing system running
+
+TOPS-20.  This PDP-10 package, called LSI, enables a user to converse
+
+with an LSI-11 that is attached to the PDP-10, load the LSI-11 from
+
+files stored on the PDP-10, and control programs that have been loaded
+
+into the LSI-11.  The LSI-11 console terminal port is connected, via an
+
+RS-232C null terminal adaptor, to a terminal line on the PDP-10.  The
+
+LSI program effectively connects the PDP-10 user's terminal as an
+
+operator console to the remote LSI-11.
+
+
+G.   Program Debugging     _______ _________
+
+
+     Although the TIU provides a local program debugger, extensive and
+
+powerful debugging capabilities are available to developers of LSI-11
+
+software via the XNET debugger available on TENEX and TOPS-20
+
+timesharing computers.  XNET, along with the other debugging facilities,
+
+is described in detail in the next section.
+
+
+
+
+
+
+
+
+
+
+
+
+                                   4
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                   II   COMPILATION CONTROL FACILITY
+
+
+     The TOPS-20 system provides several features that facilitate the
+
+management of program modules and simplify the task of system
+
+generation.  The most powerful of these features is the LOAD command
+
+which forms the basic compilation control facility.  The LOAD command*
+
+is used to link several object modules together to form a load module,
+
+automatically updating the object files if any are older than the
+
+corresponding source files.
+
+
+     As an example, suppose you give the command:
+
+                          LOAD (FROM) PROGRAM
+
+
+     If PROGRAM.OBJ does not exist, or if it is older than the most
+
+recent PROGRAM.M11, (i.e., it has a write date before the write date of
+
+PROGRAM.M11), the system automatically calls MACN11 to assemble
+
+PROGRAM.M11, producing an up-to-date PROGRAM.OBJ.  LINK11 is then
+
+invoked to convert the object file into a load module.
+
+
+     The syntax for the LOAD command is:
+
+             LOAD (FROM) sources object,sources object,...
+
+
+     where:
+
+--------------------
+* The LOAD command is designed for general TOPS-20 program preparation;
+to reduce confusion, only those features used in TIU system generation
+will be discussed.  Refer to the TOPS-20 User's Manual for complete
+documentation of the LOAD command.
+
+                                   5
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+Sources        is one or more source file specifications preceded and/or
+               followed by switches.  You must separate the source files
+               with plus signs.  No spaces or tabs are allowed.  If you
+               do not give a file type in a file specification, the
+               system looks for a source file with one of the standard
+               types.  If there is more than one file with a standard
+               file type, the system uses .FOR.
+
+a space        separates the source file specifications from the object
+               file specification.  If you do not give an object file
+               specification, you do not have to leave a space.
+
+object         is an object file specification.  If you do not give an
+               object file specification, the system uses the name of
+               the last file in the corresponding sources.
+
+@name.typ      You may store any portion of the command in a file.  That
+               portion of the command is included just as if you typed
+               it on your terminal whenever you type an @ followed by
+               the name of the file.  You may use recognition in typing
+               the file specification, but the commands within the file
+               may not use recognition.
+
+
+     In addition to the file specification, the LOAD command takes a set
+
+of optional switches will will control its processing.  If you place a
+
+switch before a set of sources, the switch applies to all the files in
+
+that set of sources; if you place a switch after a file specification in
+
+a set of sources, the switch applies to just that file.  The list of
+
+relevant switches are:
+
+
+/BINARY        Generates a binary file for each set of source file
+               specifications.  Normally, the system generates these
+               binary files, so this switch is useful in reversing a
+               global /NOBINARY switch.
+
+/COMPILE       (or an object file older than any one of the
+               corresponding source files) Produces an object file from
+               the sources, regardless of whether it is up-to-date or
+               not.  The /NOCOMPILE switch causes the system to produce
+               an object file only if it is out-of-date; the
+               /RELOCATABLE switch causes the system to use an existing
+               object file, regardless of its date.  Normally, the
+               system assumes the action of the /NOCOMPILE switch.
+
+
+                                   6
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+/LIST          Generates a disk listing file for each file that is
+               compiled or assembled.  Give the PRINT command if you
+               want a line printer copy of the file.  The listing file
+               name is the name of the last source file and the type is
+               .LST.  Unless you specify this switch, the system does
+               not generate a listing file.
+
+/MAP:name.typ  Produces loader maps during the loading process and
+               stores them in the file name.typ.  If you do not give a
+               file name and type, the system uses nnnLNK.MAP, where nnn
+               is your job number.  The /MAP switch applies to the
+               entire command, not to just one file.  If you use
+               recognition input in typing the file specification, the
+               system creates a new generation of the recognized file.
+
+/NOBINARY      Inhibits the generation of an object file.  This switch
+               is useful along with the /LIST switch to produce listings
+               without additionally producing an object file.
+
+/NOCOMPILE     Compiles a file only if it is out-of-date.  Since the
+               system normally does this, the /NOCOMPILE switch is
+               useful for turning off a global /COMPILE or /RELOCATABLE
+               switch.
+
+/NOLIST        Inhibits the generation of a listing file.  Normally, the
+               system does not generate a listing file.
+
+/RELOCATABLE   Uses the existing object files, even though they may be
+               out-of-date.  The /COMPILE switch causes the system to
+               always produce an object file; the /NOCOMPILE switch
+               causes the system to produce an object file only if the
+               current one does not exist or is out-of-date.  Normally,
+               the system assumes the action of the /NOCOMPILE switch.
+
+/SAVE:name.typ Stores the load module in the file "name.typ."  The /SAVE
+               switch applies to the entire command, not to just one
+               file.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   7
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                      III   MACN11 CROSS-ASSEMBLER
+
+
+     MACN11 is a PDP-11 MACRO language assembler which operates on the
+
+PDP-10 under the TOPS-20 operating system.  Except for the differences
+
+listed in the following pages, MACN11 version 4 is compatible with the
+
+language accepted by MACRO-11 under DOS Version 9, as described in DEC's
+
+DOS/BATCH assembler manual (DEC-11-LASMA-A-D).
+
+
+A.   Features not yet supported     ________ ___ ___ _________
+
+
+.DSABL REG          Parsed properly but ignored--register definitions
+                    are always enabled at present.
+
+.MCALL              Ignored--at present system macro definitions invoked
+                    via .MCALL must be supplied by specifying SYSMAC.SML
+                    as the first input file.
+
+Both of these features will be supported in a future version.
+
+
+B.   Sundry differences     ______ ___________
+
+
+     Default modes for the .LIST/.NLIST and .ENABL/.DSABL directives can
+
+be changed by assembly parameters in MACN11.  In the standard
+
+configuration these defaults match MACRO-11's except for the following:
+
+
+.NLIST TTM     format listings for lpt output.
+
+.ENABL LC      don't fold lower case.
+
+
+
+
+
+
+
+                                   8
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+     The following special characters are legal in MACN11 source code:
+
+                     escape, ^N, ^O, `, {, }, |, ~
+
+
+C.   Language extensions     ________ __________
+
+
+.ASCII & .ASCIZ     MACN11 allows multiple expressions, rather than just
+                    one, within brackets.  Expressions are delimited by
+                    commas.  E.g., "<cr><lf>" can be written as
+                    "<cr,lf>".
+
+.ENABL & .DSABL     These verbs recognize three nonstandard operands:
+
+
+                    NSF       (Nonstandard features)--Enabled by
+                              default.  Enabling NSF allows use of
+                              MACN11's extended features.  Disabling
+                              limits the acceptable source language to
+                              being strictly compatible with MACRO-11.
+
+                    ISD       (Internal Symbol Definitions)--Disabled by
+                              default Enabling ISD includes definitions
+                              of internal symbols, as well as global
+                              symbols, in the object module output.
+                              These definitions allow generation of a
+                              symbol table for debuggers such as DDT-11.
+
+                    HOV       (Hexadecimal override)--Disabled by
+                              default.  If the current radix is 16 and
+                              HOV is enabled, terms of expressions which
+                              begin with A-F are parsed as hex numbers,
+                              rather than symbols.  E.g.,
+
+                     .ENABL  HOV     ; Enabling hex override causes
+                     MOV      A,R0   ; this instruction to load 10. into
+                                     ; R0, rather than the address of a
+                                     ; word labelled A.
+
+.ENDM               Interior macro definitions within a nest can be
+                    terminated by a .ENDM whose operand is the name of
+                    an exterior definition.
+
+Hex numbers         Hex numbers, using the digits 0-9 and A-F, may be
+                    used via extensions of the existing radix control
+                    functions.  .RADIX accepts 16 as a valid operand to
+                    set the current default radix, and temporary radix
+                    control includes "^H" in addition to the standard
+                    "^D", "^O", and "^B".  Using hex as the default
+
+
+                                   9
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+                    radix may require preceding some hex numbers with a
+                    0 digit.  For example, "0BAD" is clearly a hex
+                    number, but "BAD" is normally assumed to be a
+                    symbol.  This assumption can be changed by ".ENABL
+                    HOV".
+
+.IF variants        The .IF conditional assembly command allows these
+                    additional assembly control arguments:
+
+
+                    ABS       ".IF ABS <address-expression>" causes
+                              assembly of the conditional block which it
+                              heads if the address expression given is
+                              absolute, rather than relocatable.
+                              Absolute expressions are those which can
+                              be evaluated entirely by the assembler;
+                              they must contain no global references and
+                              no references to labels within relocatable
+                              program sections (control sections) other
+                              than those of the form "a-b", where a and
+                              b are in the same section.
+
+                    EQV       ".IF EQV <address-expression>,<address-
+                              expression>" assembles the conditional
+                              block which it heads if both expressions
+                              are equivalent.  They are defined as
+                              equivalent when they have the same type,
+                              addressing mode, and value.  For example,
+                              ZERO is equivalent to 0 if the former is
+                              defined by "ZERO = 0", but neither is
+                              equivalent to R0, %0, or GZERO, where
+                              GZERO is a global symbol whose value may
+                              be 0.
+
+                    NQV       Identical to .EQV except that it assembles
+                              the subsequent conditional block if the
+                              two expressions are not equivalent.
+
+Note:  Address expressions in these .IF variants should not refer to
+                    symbols which are defined at a later point in the
+                    source input.  An attempt to do this normally causes
+                    phase errors (P flags) on every symbol definition
+                    following the .IF.
+
+.LIST & .NLIST      Two additional listing control operands are
+                    recognized:
+
+
+                    ASC       (ASCII binary expansion)--Default is
+                              .NLIST ASC.  Specifying ".NLIST ASC"
+
+
+                                   10
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+                              suppresses listing of the binary code
+                              generated by .ASCII and .ASCIZ directives.
+                              This is effectively a selective ".NLIST
+                              BIN" for the sake of listing readability
+                              where the normal alternative of ".NLIST
+                              BEX" may be undesirable.
+
+                    SON       (Source Oriented Numbering)--Default is
+                              .NLIST SON .LIST SON in the source, or
+                              /LI:SON in the command dialog, specifies
+                              source-oriented numbering of listing
+                              pages.  In this format page numbers appear
+                              as "n-m", where n is incremented only when
+                              a form feed is read from the source input;
+                              m is a page number extension which
+                              identifies output pages following the most
+                              recent form feed.  The default for this
+                              option is .NLIST SON, for sequential
+                              numbering of output pages regardless of
+                              input file format.
+
+.INSERT             ".INSERT filename" logically inserts the named file
+                    into the source by reading it immediately.  This is
+                    convenient for specifying macro libraries required
+                    for an assembly, eliminating the need for users to
+                    type these file names in their command dialog.
+
+_                   (Logical shift operator)--An additional binary
+                    operator is recognized in expression evaluation.
+                    "a_b" is evaluated as "the value of a shifted left b
+                    bits".  If b is negative, the term is shifted right.
+                    Both a and b may be any valid term, including a
+                    bracketed expression.  A common use for this
+                    operator is in defining symbolic values for bit
+                    masks.  For example, "INTENA = 1_6" defines an
+                    interrupt enable mask as a 1 in bit 6.
+
+.NKIND              .NKIND is analogous to .NTYPE, but instead of
+                    returning an addressing mode it returns flag bits to
+                    indicate the type of the argument.  ".NKIND
+                    symbol,<address-expression>" sets symbol to the
+                    expression's type bits, which are defined as
+                    follows:
+
+
+                    1 (bit 0)      1 if relocatable, 0 if absolute 2
+                                   (bit 1)                                   1 if global 4 (bit 2)                                   1 if expression defines a register 8
+                                   (bit 3)                                   1 if the expression is a label on a
+                                   line of source code 16 (bit 4)                                   1 if defined, 0 if undefined
+
+
+
+                                   11
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+.PDP10              The ".PDP10" directive is recognized, but is
+                    ignored.  This is for the sake of assembling Bliss-
+                    11 compiler output.
+
+Predefined symbols  Symbols can be predefined by assembling their symbol
+                    table entries into MACN11.  At present register
+                    names (R0-R7, SP, and PC) and ".MACN."  are defined
+                    in this way.  .MACN.  is equated to the assembler's
+                    version number.  .VRSN.  is set to the Tenex version
+                    number of the source file currently being read; if
+                    the source is not on disk .VRSN.  is undefined.
+
+^R                  "^R" is recognized as a unary operator in
+                    expressions, indicating that the next three
+                    characters are to be converted to radix 50 format
+                    for use as a 16-bit value.  Any character without a
+                    radix 50 equivalent is treated as a delimiter, and
+                    is taken as equivalent to trailing blanks in
+                    evaluating the term.
+
+.REQUIRE            ".REQUIRE filename" performs exactly the same
+                    function as ".INSERT filename", except that it also
+                    forces a page skip in the assembly listing before
+                    the file is read.
+
+.SBHED              A new directive, .SBHED, specifies a subheading; it
+                    functions as a conditional .PAGE followed by a
+                    .SBTTL.  It skips to a new page unless the most
+                    recent listing output was a page skip, then outputs
+                    a standard page heading.  .SBHED's operand field is
+                    included in the table of contents and in all page
+                    subheadings until another .SBHED or a .SBTTL is
+                    issued.  The .SBHED directive itself is the first
+                    line listed below the new page heading.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   12
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+D.   Operating procedures     _________ __________
+
+
+     Operating procedures for MACN11 are nearly identical to MACRO-11's.
+
+The only differences are the following:
+
+
+     .  "=" and "_" are accepted as synonyms for "<".
+
+     .  The /PA switch is accepted but is ignored.
+
+     .  An additional switch, /FO, is available to specify the PDP-10
+        file format for object output.
+
+     .  Another added switch, "/EQ", sets specified assembly parameters
+        to zero.  For example, "/EQ:A:B" is equivalent to supplying
+        "A=0" and "B=0" in the source.
+
+     .  The command dialog accepts full TOPS-20 file names, including
+        directory names and file version numbers, and performs file name
+        recognition as usual with escape and control-F.
+
+Details of these differences are included in the description below.
+
+
+     MACN11 assembles one or more source files, normally producing two
+
+files: a relocatable object module and an assembly listing.  Command
+
+string syntax is similar to MACRO-11's.
+
+
+     Object files normally are generated in packed format, with each
+
+PDP-11 word right-adjusted in a PDP-10 halfword.  This format is
+
+standard for other utilities which may deal with these files (LNKX11,
+
+LINK11, FILEX, etc.).
+
+
+     When MACN11 is ready for a command it lists its name and version
+
+number on the user's terminal, then outputs a "*" on a new line.  In
+
+return it expects the following sort of string:
+
+               object,listing<source1,source2,...,sourcen
+
+
+
+                                   13
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+"<"            separates output file specifications from input specs
+               ("=" and "_" are equally acceptable).  Each field in the
+               command string specifies a file name and may include
+               optional switches.  File names are in standard TOPS-20
+               format -- "<directory>filename.extension.version" -- with
+               the usual defaulting conventions for directory and
+               version.  If the extension is omitted MACN11 chooses a
+               default appropriate to the type of file (object, listing,
+               or source).
+
+"Object"       is normally a relocatable object module file, ready for
+               input to LINK11.  Its default extension is ".OBJ".
+               Absolute binary output, with default extension ".BIN",
+               can be generated by using ".ENABL ABS" in the source
+               program, or by including a "/EN:ABS" switch in the
+               command string.
+
+Object file format may be specified with the "/FO" switch.  Switch
+               values set three independent parameters, with an
+               effective default of "/FO:P:NAL:NOP".  The following
+               values are legal:
+
+Basic format selection:
+
+
+               P         Packed format -- one PDP-11 word right-adjusted
+                         in each PDP-10 half word
+
+               I         Image format -- one PDP-11 byte right-adjusted
+                         in each PDP-10 word
+               Alignment of the start of output blocks in PDP-10 words
+               for packed format output:
+
+
+               NAL       No alignment
+
+               HAL       Half word alignment
+
+               WAL       Word alignment
+               Padding between blocks:
+
+
+               NOP       No padding
+
+               PAD       Standard padding -- 8 bytes for .OBJ files, 6
+                         bytes for .BIN files
+
+"Listing"      is an ASCII file with a default extension of ".LST".
+               Cross references may be obtained by using a "/CRF" switch
+               with the listing file; this generates a file with
+
+
+                                   14
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+               extension ".CRF", which must subsequently be processed by
+               CREF.
+
+"Source"       is an ASCII with the following default extensions
+               recognized by the assembler:
+
+                     ".M11", ".P11", ".MAC", blank
+
+
+     Either the object file or the listing file, but not both, may be
+
+omitted.  Any number of source files (except 0) may be used.
+
+
+     While an assembly is running it's progress may be monitored by
+
+typing control-Q.  MACN11 responds to this identifying the assembler
+
+pass (1 or 2), the source file being processed, and the current input
+
+line number.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   15
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                        IV   LINK11 CROSS-LINKER
+
+
+     After all TIU source files are assembled by MACN11, the resulting
+
+relocatable object files must be linked together to form the load
+
+module.  The linking process resolves global symbol references and
+
+relocates each program section to a place in memory.  On the PDP-10,
+
+LINK11 is used to link the files produced by MACN11.  The following
+
+documentation is for version 5.3 of LINK11.
+
+
+A.   User Interface     ____ _________
+
+
+     LINK11 can be invoked automatically by the TOPS-20 COMPILE or LOAD
+
+command or run directly by the user.  If manually invoked, the user
+
+should type a command line in response to the "*" prompt.  The LINK11
+
+command line is of the form:
+
+     BINFIL,MAPFIL,SYMFIL=OBJFIL1,...,OBJFILn/SWITCH1.../SWITCHm/E
+
+
+     where:
+
+
+BINFIL    Output file name for the resulting load module.
+
+MAPFIL    Output file name for the map file.
+
+SYMFIL    Output file name for the symbol table file.
+
+OBJFIL1   Input file name of the object files (produced by MACN11).
+
+SWITCH1   Linking control switches (defined below).
+
+
+
+
+
+                                   16
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+The character "_" may be substituted for "=" and the character "%" for
+
+"/".  On the right side of the "=", "+" may be substituted for ",".  In
+
+addition, several switches may be enclosed in parentheses, separated by
+
+spaces.  Spaces in the command line are usually ignored.  Command files
+
+may be inserted by including CMDFIL@ or @CMDFIL in the command line.
+
+Line numbers, line boundaries, etc.  are ignored when reading a command-
+
+file.  There is no explicit limit to the number of command files allowed
+
+or to the depth of nesting thereof.  that the default may be set either
+
+way.  In addition, the command scanner was changed to read multiple
+
+lines until one is terminated with /E, as for LNKX11.  The switches are
+
+
+     The linking process can be controlled by specifying linking control
+
+switches in the input command line.  The available options are:
+
+
+A:pl      Specifies a list of PSECTs (pl) to be loaded into an
+          additional address space
+
+B:n       Set the lower limit for the load module
+
+B:n:pl    Set lower limit for a list of PSECTs (pl) to n (octal)
+
+C         Head the load module with a COMDIR
+
+D:n       Link an appropriate DDT with the program; put n null symbols
+          in the table
+
+D         Same as /D:5
+
+DS:n      Put n null symbols in DDT's symbol table (used when the object
+          module for DDT is explicitly given)
+
+E         Required to terminate last command line but ignored
+
+IMG       Produce an IMAGE mode output file
+
+IUP       Ignore undefined PSECT names in /A, /B or /T switches so that
+          a common link runfile can be used for varying load module
+          configurations
+
+
+                                   17
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+L         Produce a .MAP file even if no MAPFIL was specified in the
+          command line (useful with COMPILE)
+
+LI        List internal symbols in the .MAP file
+
+MS        Produce a MEND format symbol table in binary file
+
+NC        Do not produce a COMDIR
+
+NL        Do not list internal symbols in the .MAP file
+
+NMS       Do not add a MEND format symbol table to binary file
+
+ONE       Only output the 1st address space of a multi-space link
+
+P         Produce a packed .LDA file instead of a .BIN file
+
+S         Suppress internal symbols in the symbol table.  If /S appears
+          before the "=", then internal symbols will be suppressed for
+          all modules; otherwise, it affects only the module after which
+          the switch appears.
+
+$         Like /S, but suppress only those symbols whose second
+          character is "$" (i.e.  Bliss-11 generated symbols)
+
+T:n       Set the high limit for the load module
+
+T:n:pl    Set high limit of a list of PSECTs (pl) to n (octal)
+
+TA        Tell the user on his TTY various information as Link11 runs
+
+TR        Use the transfer address of the module after which this switch
+          appears
+
+TR:       Set the transfer address to n (octal)
+
+U         List undefined globals on the user's TTY
+
+UP        Produce an unpacked .BIN file instead of a .LDA file
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   18
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+B.   Symbol Debugging Support     ______ _________ _______
+
+
+     This section explains some of the details of the symbolic debugging
+
+support for DDT and for XNET.
+
+
+     If DDT is present, a symbol table will be produced at the address
+
+indicated by the GLOBAL symbol D.SYMT.  A user may use his own version
+
+of DDT simply by including it in the command string instead of the /D
+
+switch.  To cause Link11 to realize that DDT is present, the GLOBALs
+
+"DDT" and "JOBSA" must be defined.  D.SYMT will be defined at the end of
+
+the program if it is not already defined.  Since the system DDT defines
+
+D.SYMT at its end, it should always be loaded last.  (Otherwise the
+
+symbol table would overwrite the program!)  This is guaranteed by the /D
+
+switch.  The location indicated by the GLOBAL JOBSA will be overwritten
+
+with what would have been the transfer address if DDT had not been
+
+loaded.  The actual transfer address will be DDT, so that DDT will be
+
+run before the user program.  The symbol table passed to DDT includes
+
+all GLOBAL symbols (including .CSECT names).  If .ENABL ISD was
+
+specified in MACN11, local symbols will also be put in the symbol table,
+
+subject to restrictions by the /S and /$ switches.  In addition, any
+
+local symbols with the same name as previously encountered symbols will
+
+be ignored.  The symbols R0-R7, SP, and PC are ignored since the system
+
+DDT already handles the normal register names in a special manner.
+
+Other register symbols are defined using the assumption that JOBSA is
+
+just after an array of 8 words where DDT keeps the user's registers.
+
+The location indicated by the GLOBAL JOBDDT, if defined, will be
+
+
+
+                                   19
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+overwritten with the address in DDT which may be called with a JSR
+
+PC,@JOBDDT (this address is DDT+2).  The system DDT leaves this to be
+
+defined by the user if he wants it.  This allows the user to initialize
+
+the location JOBDDT with the address of a routine to be called if DDT is
+
+not present.
+
+
+     The restriction that DDT be loaded at the end of the program has
+
+been removed.  This is possible because PSECTs are bound to addresses
+
+between the first and second passes, rather than during the first pass.
+
+Consequently, and for compatibility with LNKX11, the ISI Link11 uses the
+
+first transfer address of the first, rather than last, module which has
+
+one.  When DDT is linked with the program, the transfer block has the
+
+address of DDT, but in the COMDIR the program transfer address is the
+
+real starting address and DDT is given as the ODT transfer address.
+
+This allows running the program as usual under DOS, but if there is a
+
+problem, DDT can be started instead with the ODT command.
+
+
+     MEND symbol table -- Our debugger, MEND, can read a symbol table
+
+which follows the transfer block in the load module.  The format of the
+
+symbol table generated by Link11 is a sequence of standard formatted
+
+binary blocks.  The first block is the module name table, which must all
+
+be in one block:
+
+
+       -------------
+       |  0  |  1  |
+       -------------
+       | bytecount |
+       -------------
+       |module name| \
+       -           - |
+       | in RAD50  |  >  One for each module
+
+                                   20
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+       ------------- |
+       |  0 or -1  | /   <--  If -1, this module contains start address
+       -------------
+            ...
+       -------------
+             |cksum|
+             -------
+
+The module name table is followed by symbol blocks, with the number of
+
+symbols per block limited so that the block is no longer than 256 bytes.
+
+The third word of each block gives the module number to which the
+
+symbols belong (as listed in the module name table), and the type of
+
+symbols in the table.  The symbol block format is as follows:
+
+
+         -------------           Block types:
+         |  0  |  1  |            0  Half-killed global symbols
+         -------------            4  Global symbols
+         | bytecount |           10  Half-killed internal symbols
+         -------------           14  Internal symbols
+         |type | mod |           20  Half-killed register symbols
+         -------------           24  Register symbols
+         |symbol name| \
+         -           - |
+         | in RAD50  |  >  One for each symbol
+         ------------- |
+         |   value   | /
+         -------------
+              ...
+         -------------
+         |    -1     |
+         -           -
+         |    -1     |     End-of-block indicator
+         -------------
+         |     0     |
+         -------------
+               |cksum|
+               -------
+
+
+
+
+
+
+
+
+
+
+                                   21
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+C.   Program Section (PSECT) Processing     _______ _______ _______ __________
+
+
+     PSECTs are handled as they are by LINK on the PDP11.  PSECTs of the
+
+same name in different modules can either be overlaid or concatenated,
+
+depending on the attributes of the PSECT.  This allows pulling sections
+
+of different modules together; for example, the data sections of all the
+
+modules can be concatenated into one contiguous section, and the
+
+instruction sections of all the modules can be concatenated into a
+
+separate contiguous section.  A potential difficulty is that for old
+
+programs which use blank and named CSECTs (or PSECTs), the previous
+
+versions of Link11 would intersperse the portions of the blank CSECT for
+
+each module among the uniquely named CSECTs for each module, while
+
+commonly named CSECTs would be overlaid.  However, with proper PSECT
+
+processing, the portions of the blank CSECT or PSECT would be
+
+concatenated separately from the named CSECTs or PSECTs.  This is
+
+usually not a problem, but it means that modules which use multiple
+
+program sections may not have all the sections loaded contiguously in
+
+memory.
+
+
+     Groups of PSECTs can be bound to either a low or high address using
+
+the /B or /T switch.  Bounds may be "specific", listing a group of
+
+PSECTs which are to be bound together as a contiguous block in the given
+
+order by a switch of the format:
+
+                     /B:n:PSECT1:PSECT2:...:PSECTm
+
+
+     while all PSECTs that are not specifically bound may be grouped
+
+together by a general switch of the format:
+
+
+                                   22
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+                                  /B:n
+
+
+     This is especially useful when different parts of the code need to
+
+be located in different memory management pages.
+
+
+D.   Multiple address spaces      ________ _______ ______ 
+
+
+     The EPOS operating system uses several address spaces which share
+
+common data and subroutines via shared page mapping.  In order for
+
+global locations to be known by the multiple address spaces, they must
+
+be linked together.  In addition, it is convenient to perform the
+
+initial load of all address spaces from one module (especially for
+
+cross-net booting).  Multiple address spaces are put into one load
+
+module by effectively concatenating the load modules for each address
+
+space, and putting the real transfer address on the last address space
+
+rather than the first, and making all the other transfer addresses be
+
+-1.  To generate multiple address spaces, the /A switch is used to
+
+specify a list of PSECTs to be loaded into an address space, with
+
+successive /A switches generating successive address spaces.  The format
+
+of the switch is
+
+                      /A:PSECT1:PSECT2:...:PSECTn
+
+
+     All unmentioned PSECTs are loaded into address space 0, which is
+
+the only one generated if no /A switches are given.  One application of
+
+this is to provide a separated load module for operating systems which
+
+support Instruction- and Data-spaces for a user address space (on
+
+PDP11/45/55/70).
+
+
+
+                                   23
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+E.   Additional Features     __________ ________
+
+
+     .LIMIT directive -- In order for the operating system to initialize
+
+the page mapping to correspond to the initial multiple address space
+
+load, successive occurrences of the .LIMIT directive within a module
+
+will be set to the limits of successive address spaces so that a table
+
+of address space limits may be created.
+
+
+     Communications directory -- The COMDIR has been updated to include
+
+the version IDENT of the load module and the time and date of creation,
+
+plus the DDT transfer address if any.  So that a multiple address space
+
+loader can know how many physical pages need to be assigned to a virtual
+
+address space, a COMDIR heads each address space of a multiple-space
+
+load module with the lower limit and size corresponding to each space.
+
+
+     IMAGE mode output -- IMAGE mode output is a simple core image of
+
+one or many address spaces.  No load blocks are used; the output is a
+
+contiguous stream of words from the low limit to the high limit.  For
+
+multiple spaces, the limits are rounded to page boundaries so that
+
+virtual address spaces are integral multiples of 4K pages and the code
+
+can be mapped to the correct virtual address.  The transfer address is
+
+assumed by the loader to be the first word of the image.  This is used
+
+for fast loading of the operating system and for position-independent
+
+transient programs that are loaded with a single disk read operation.
+
+
+     Symbol file -- A third output file has been added; into this file
+
+is written only the transfer block and the MEND symbol table blocks.
+
+
+
+                                   24
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+This file is used when it is not desired or possible to put the symbol
+
+table on the end of the standard load module.
+
+
+     MAP file -- The format has been changed to include some new
+
+information such as the version IDENT for each module and both the high
+
+and low limits on PSECT lines.  At the top of the map file, a memory
+
+allocation summary is given for all PSECTs.  For multiple address space
+
+links, the allocation is shown for each address space, and all PSECT
+
+lines give the number of the address space into which that PSECT will be
+
+loaded.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   25
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                          V   THE LSI PROGRAM
+
+
+     With all program preparation facilities on a PDP-10, some means
+
+must be used to transfer program load modules from the PDP-10 to the
+
+LSI-11.  This mechanism must be easy to use, require a minimum of effort
+
+by the user, and not entail substantial delays; these considerations
+
+rule out paper tape, magnetic tape, or other such mediums.  Since the
+
+LSI-11s can be loaded over a serial terminal line (such as the console
+
+port), the PDP-10 can emulate a paper tape reader and load the LSI-11
+
+over a normal terminal line.
+
+
+     A PDP-11 loading and control facility was developed by SRI to allow
+
+remote access to an LSI-11 from a PDP-10 timesharing system running
+
+TOPS-20.  This PDP-10 package, called LSI, enables a user to converse
+
+with an LSI-11 that is attached to the PDP-10, load the LSI-11 from
+
+files stored on the PDP-10, and control programs that have been loaded
+
+into the LSI-11.  The LSI-11 console terminal port is connected, via an
+
+RS-232C null terminal adaptor, to a terminal line on the PDP-10.  The
+
+LSI program effectively connects the PDP-10 user's terminal as an
+
+operator console to the remote LSI-11.
+
+
+     When the program is started, it prompts the user for the PDP-10
+
+terminal line number to which the LSI-11 is connected and the speed at
+
+which the line should run.
+
+
+
+                                   26
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+     The following commands are provided:
+
+
+B         Set break character--The user is prompted for the new break
+          character.  Initially defaulted to control-B, a BREAK signal
+          is sent to the LSI-11 when this character is typed by the
+          user.  If the LSI-11's DLV-11 serial interface card is
+          strapped so that BHALTL is asserted on detecting a framing
+          error, the BREAK signal will halt the CPU and the LSI-11
+          processor will enter its ODT microcode debugging routine.
+
+D         Define an LSI-11--The user is prompted for a terminal (TTY)
+          line number and line speed at which to operate.  The TTY line
+          is assigned to the user's job and may to use to converse with
+          another LSI-11.
+
+E         Exit--The program exits, deassigning the TTY line and retuning
+          the line speed to its default state (usually zero, which
+          disables the line).
+
+I         Set intercept character--The user is prompted for the command
+          intercept character.  Initially defaulted to control-E, LSI
+          returns to command level when this character is typed by the
+          user.
+
+L         Load file--The user is prompted for the name of a binary load
+          module file with a default extension of BIN.  After starting
+          the LSI-11 microcode bootstrap, an absolute loader program is
+          transferred across the TTY line, followed by the binary file.
+          After file transfer, the user terminal is left "talking" to
+          the LSI-11 (see "T" command below).  If the absolute loader
+          file cannot be found, the user is prompted for its name.
+
+P         Push and enter lower EXEC--A lower EXEC fork is created for
+          the user; this command is identical to the TOPS-20 EXEC's PUSH
+          command.
+
+R         Remove LSI-11--The TTY line is deassigned and the line speed
+          returned to its default state.
+
+S         Status--The status of each of the LSI-11 interconnections are
+          displayed.  This provides the TTY line number and operating
+          line speed.  In addition, the current break and intercept
+          characters are indicated.
+
+T         Talk to LSI-11--The user's terminal is connected to the LSI-11
+          as a virtual console.  All characters typed by the user are
+          passed to the LSI-11, with the exception of the intercept and
+          break characters; all output from the LSI-11 is displayed on
+          the user's terminal.  Typing the break character sends a BREAK
+
+
+                                   27
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+          signal to the LSI-11; typing the intercept character exits the
+          TALK command and returns the user to command mode.
+
+W         Write cassette tape--The user is prompted for the name of a
+          binary load module to be written to tape.  The absolute loader
+          and file are transferred across the TTY line.  After command
+          completion, the user is left in command mode.
+
+
+     The LSI program has the capability to concurrently handle multiple
+
+LSI-11s.  As more LSI-11s are defined by the "D" command, they are
+
+assigned ID numbers ranging from 1 through 9.  When multiple LSI-11s are
+
+in use, the "R", "T", "L", and "W" commands prompt for an LSI-11 number.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   28
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                  VI   THE XNET CROSS-NETWORK DEBUGGER
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   29
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+
+                      VII   THE TIU LOADER-SERVER
+
+
+     The TIU loader-server program acts as the server for requests from
+
+TIUs to be reloaded after program failure or loss of power.
+
+
+     The operation of the loader server is controlled by a database file
+
+which specifies the file to be loaded into each TIU.  Whenever a request
+
+for loading is received, this database file is scanned to see if an
+
+entry exists for the requesting TIU and, if so, if the indicated file
+
+can be opened.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   30
+20 April 1979                  D R A F T                        at 13:11
+
+
+
+
+
+
+
+                               REFERENCES
+
+
+
+1.   Digital Equipment Corporation, "DOS/BATCH Assembler Manual," Manual
+     No. DEC-11-LASMA-A-D, Digital Equipment Corporation, Maynard,
+     Massachusetts, (1976).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   31
+

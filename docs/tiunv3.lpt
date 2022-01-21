@@ -1,0 +1,3972 @@
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+               TERMINAL INTERFACE UNIT NOTEBOOK
+
+               VOLUME 3 -- HARDWARE DOCUMENTATION
+
+               April 1979
+
+
+               By: James E. Mathis
+                   Keith S. Klemba
+                   Andrew A. Poggio
+                   William C. Ross
+
+
+               ARPA Order No. 2302
+               Contract No. MDA903-78-C-0126
+               Effective Date:  1 November 1977
+               Expiration Date:  31 October 1979
+               SRI Project No. 6933
+
+
+
+               This research was sponsored by the Defense Advanced
+               Research Projects Agency under ARPA Order No. 2302,
+               Contract MDA903-78-C-0126, monitored by Dr. V. Cerf.
+
+               The views and conclusions contained in this document are
+               those of the authors and should not be interpreted as
+               necessarily representing the official policies, either
+               express or implied, of the Defense Advanced Research
+               Projects Agency or the United States Government.
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+                                SUMMARY
+
+
+     This manual is Volume 3 of SRI's TIU Notebook and is intended to
+
+provide detailed documentation of the TIU hardware.  The TIU Notebook
+
+describes the Terminal Interface Unit developed by SRI as it is used to
+
+connect terminals to the Packet Radio Network.  Volume 1 provides an
+
+overview of the system and is a User's Guide to the TIU.  Volume 2
+
+describes the TIU system software and Volume 4 describes the PDP-10-
+
+resident support software.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   ii
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+                                CONTENTS
+
+
+
+SUMMARY .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    ii
+
+
+LIST OF ILLUSTRATIONS  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .     v
+
+
+LIST OF TABLES   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    vi
+
+
+   I TIU LSI-11 HARDWARE  .  .  .  .  .  .  .  .  .  .  .  .  .  .     1
+
+     A.   Typical Hardware Configuration .  .  .  .  .  .  .  .  .     2
+
+     B.   Device Address Assignments  .  .  .  .  .  .  .  .  .  .     2
+
+
+  II TIU HARDWARE DIAGNOSTICS   .  .  .  .  .  .  .  .  .  .  .  .     4
+
+     A.   Robustness Module System Exerciser   .  .  .  .  .  .  .     4
+
+     B.   LSI-11 Diagnostics .  .  .  .  .  .  .  .  .  .  .  .  .     5
+
+
+ III TIU PHYSICAL PACKAGING  .  .  .  .  .  .  .  .  .  .  .  .  .    13
+
+     A.   The PDP-11/03 Packaging  .  .  .  .  .  .  .  .  .  .  .    13
+
+     B.   LSI-11/2 Packaging .  .  .  .  .  .  .  .  .  .  .  .  .    21
+
+
+  IV THE LSI-11 PROCESSORS   .  .  .  .  .  .  .  .  .  .  .  .  .    22
+
+     A.   The KD-11F Processor  .  .  .  .  .  .  .  .  .  .  .  .    22
+
+     B.   The KD11-H Processor  .  .  .  .  .  .  .  .  .  .  .  .    23
+
+
+   V LSI-11 MEMORIES   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    24
+
+     A.   PDP-11/03 Memory   .  .  .  .  .  .  .  .  .  .  .  .  .    24
+
+     B.   LSI-11/2 Memory .  .  .  .  .  .  .  .  .  .  .  .  .  .    25
+
+
+                                  iii
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+  VI LSI-11 TERMINAL INTERFACES .  .  .  .  .  .  .  .  .  .  .  .    26
+
+     A.   The DLV-11 Serial Interface Card  .  .  .  .  .  .  .  .    26
+
+     B.   The DLV11-E Serial Interface Card With Modem Control   .    29
+
+     C.   The DLV11-J Quad Channel Serial Interface Card   .  .  .    29
+
+
+ VII LSI-11 TIU 1822 INTERFACES .  .  .  .  .  .  .  .  .  .  .  .    30
+
+     A.   Interrupt-driven 1822 Interface   .  .  .  .  .  .  .  .    31
+
+     B.   Direct Memory Access 1822 Interface  .  .  .  .  .  .  .    49
+
+
+VIII TIU ROBUSTNESS MODULE   .  .  .  .  .  .  .  .  .  .  .  .  .    49
+
+     A.   Watchdog Timer  .  .  .  .  .  .  .  .  .  .  .  .  .  .    52
+
+     B.   UV-EPROM Memory .  .  .  .  .  .  .  .  .  .  .  .  .  .    53
+
+     C.   RAM Memory   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    56
+
+     D.   The Constants Registers  .  .  .  .  .  .  .  .  .  .  .    56
+
+     E.   Hardware Description and Theory of Operation  .  .  .  .    57
+
+
+REFERENCES .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .    67
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   iv
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+                             ILLUSTRATIONS
+
+
+  1   TIU Rear Panel         .  .  .  .  .  .  .  .  .  .  .  .  .    14
+
+  2   TIU Rear Panel Wiring (Sheet 1 of 2)  .  .  .  .  .  .  .  .    16
+
+  3   TIU Rear Panel Wiring (Sheet 2 of 2)  .  .  .  .  .  .  .  .    17
+
+  4   Header Pin Locations   .  .  .  .  .  .  .  .  .  .  .  .  .    18
+
+  5   DLV11 Modification     .  .  .  .  .  .  .  .  .  .  .  .  .    28
+
+  6   Photograph of SRI LSI-11 1822 Interface  .  .  .  .  .  .  .    32
+
+  7   LSI-11 1822 Interface, PC Board Parts Locations   .  .  .  .    33
+
+  8    Schematic Diagram, LSI-11 1822 Interface, Transmit
+                Section      .  .  .  .  .  .  .  .  .  .  .  .  .    35
+
+  9    Schematic Diagram, LSI-11 1822 Interface, Receive
+                Section      .  .  .  .  .  .  .  .  .  .  .  .  .    36
+
+ 10    Schematic Diagram Nomenclature .  .  .  .  .  .  .  .  .  .    37
+
+ 11    LSI-11 1822 Control Status Register (DRCSR) 167770  .  .  .    43
+
+ 12   LSI-11 1822 Transmit Register (DROUTBUF) 167772   .  .  .  .    44
+
+ 13   LSI-11 1822 Receive Register (RDINBUF) 167774  .  .  .  .  .    45
+
+ 14   Photograph of SRI Robustness Card  .  .  .  .  .  .  .  .  .    50
+
+ 15   SRI Robustness Card Parts Layout   .  .  .  .  .  .  .  .  .    54
+
+ 16   PROM and PROM-Jumper Configuration Alternatives   .  .  .  .    55
+
+ 17   Timer and Switch Register Schematic   .  .  .  .  .  .  .  .    58
+
+ 18   Memory Select and RAM Memory Schematic   .  .  .  .  .  .  .    59
+
+ 19   PROM Memory Schematic  .  .  .  .  .  .  .  .  .  .  .  .  .    60
+
+ 20   Robustness Module Timing Diagram   .  .  .  .  .  .  .  .  .    64
+
+
+
+
+                                   v
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+                                 TABLES
+
+
+  1   TIU REAR PANEL CONNECTORS .  .  .  .  .  .  .  .  .  .  .  .    20
+
+  2   LSI-11 1822 INTERFACE PARTS LIST   .  .  .  .  .  .  .  .  .    39
+
+  3   MEASURED TRANSFER RATES ON TIU 1822 INTERFACE  .  .  .  .  .    47
+
+  4   SRI Robustness Card Parts List  .  .  .  .  .  .  .  .  .  .    65
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   vi
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                        I   TIU LSI-11 HARDWARE
+
+
+     The LSI-11 is a very powerful microcomputer, featuring a full PDP-
+
+11 instruction set compatible with the 11/34, 11/40 family.  Prominent
+
+features of the LSI-11 include power-up/power-fail auto-restart
+
+processing, direct addressing of 32K by 16 bits of memory (or 64K 8-bit
+
+bytes), vectored priority interrupt handling, and a user octal debugging
+
+technique, ODT, supported in microcode.  We are also using the optional
+
+KEV11 extended arithmetic chip to provide integer multiply and divide
+
+instructions as well as floating-point arithmetic.
+
+
+     Two generations of TIU hardware are in use at SRI.  The first
+
+generation uses the DEC LSI-11 processor packaged as a DEC PDP-11/03.
+
+The second generation uses the DEC LSI-11/2 processor in an SRI-designed
+
+package.  Both the LSI-11 and LSI-11/2 processors utilize the same
+
+instruction set and their software operation is identical except for a
+
+few anomalies.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   1
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+A.   Typical Hardware Configuration     _______ ________ _____________
+
+
+B.   Device Address Assignments     ______ _______ ___________
+
+
+     The LSI-11 microcomputer uses the memory mapping technique for
+
+managing peripheral devices.  Each device is assigned addresses which
+
+correspond to device control, status, or buffer registers, or which are
+
+used in the vectored interrupt handling.  The device register addresses
+
+lie in the top 1K words of the LSI-11 address space, locations 175000
+
+through 177776.  The low 256 words of the LSI-11 address space are
+
+reserved for various system trap locations and for the device interrupt
+
+vectors.  The following memory map provides a comprehensive list of the
+
+assigned addresses.
+
+
+          Device/Function    Vector Addr             CSR addr
+             ------          -----------             --------
+
+     System Trap vectors       0 -  36
+
+     System Software          40 -  56
+
+     Console DLV              60 -  66               177560 - 177566
+
+     Line-time clock         100 - 102               177546
+
+     1822 Interface  0       140 - 146               176140 - 176146
+                     1       150 - 156               176150 - 176156
+                     2       160 - 166               176160 - 176166
+                     3       170 - 176               176170 - 176176
+
+     1822 Interface  4       200 - 206               176200 - 176206
+                     5       210 - 216               176210 - 176216
+                     6       220 - 226               176220 - 176226
+                     7       230 - 236               176230 - 176236
+
+     FIS trap                244 - 246
+
+     DLV11-J 0               300 - 306               176500 - 176506
+             1               310 - 316               176510 - 176516
+             2               320 - 326               176520 - 176526
+
+                                   2
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     DLV-11J 4               340 - 346               176540 - 176546
+             5               350 - 356               176550 - 176556
+             6               360 - 366               176560 - 176566
+             7               370 - 376               176570 - 176576
+
+     Robustness PROM                                 160000 - 173776
+
+     Robustness RAM                                  174000 - 174776
+
+     Watchdog timer reset                            175000 (write only)
+
+     NET ID switches                                 175000 (read only)
+
+     TIU ID switches                                 175002 (read only)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   3
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                     II   TIU HARDWARE DIAGNOSTICS
+
+
+     The TIU supports two different levels of hardware diagnostics: the
+
+relatively simple go/no-go system tests performed by the robustness
+
+module and the more extensive DEC-supplied diagnostics oriented towards
+
+fault isolation.  The robustness module diagnostics are designed to
+
+identify the failure to the board level and the DEC diagnostics are used
+
+to verify that the board is faulty and to assist in repair.  Diagnostic
+
+software is also available for the SRI-developed modules: the interrupt-
+
+driven 1822 interface and the robustness module.
+
+
+A.   Robustness Module System Exerciser     __________ ______ ______ _________
+
+
+     The robustness module contains a set of system exerciser
+
+diagnostics which are executed before remote loading is initiated.
+
+These tests are designed to give a simple go/no-go indication of system
+
+health.  The system components that are tested include:
+
+
+     .  LSI-11 processor using a basic instruction test
+
+     .  Robustness module PROM memory using a checksum of the code
+
+     .  LSI-11 RAM memory using a moving-1's test
+
+     .  DMA 1822 interface using an internal loop-back test.
+
+These tests are designed to indicate to the TIU operator that a hardware
+
+malfunction exists; in an experimental software environment it is often
+
+
+
+
+                                   4
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+difficult to distinguish between software or hardware problems.  After
+
+being alerted to a problem, the operator can substitute LSI-11 hardware
+
+at the board or system level and return the faulty hardware to a repair
+
+depot.
+
+
+     If the system exerciser fails in the initial basic instruction
+
+tests, the system halts and the DEC basic instruction test should be
+
+used to further diagnose the problem; the fault could be in either the
+
+CPU or the PROM on the robustness board.  Once the basic instructions
+
+have been verified, the other components of the system are checked
+
+sequentially.  Appropriate error messages are typed to pinpoint the
+
+failing component at the board level.  The details of the exercisers are
+
+covered in the section documenting the robustness module software.
+
+
+B.   LSI-11 Diagnostics     ______ ___________
+
+
+     The LSI-11 system diagnostic programs are supplied on cassette
+
+tape.  The diagnostic programs are capable of providing a rigorous test
+
+of processor, memory, and interface modules.  They verify normal system
+
+operation, or identify specific fault symptoms.  The major diagnostics
+
+routines are:
+
+
+     .  Basic_Instruction_Tests--This program tests the LSI-11 basic        _______________________
+        instruction set in all addressing modes.
+
+     .  Memory_Exerciser_Tests--This program tests the RAM memory for        ______________________
+        its ability to store and retain data and to uniquely address
+        each location.
+
+     .  Extended_Instruction_Tests--This program tests the extended        __________________________
+        arithmetic instructions ASH, ASHC, MUL, and DIV using general
+        registers R0-R5 at least once with each instruction.
+
+
+                                   5
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     .  FIS_Instruction_Tests--This program tests the floating        _____________________
+        instructions FADD, FSUB, FMUL, and FDIV.  It uses fixed number
+        patterns and each general register at least once as the stack
+        pointer.  It checks stack overflow and also checks to ensure
+        that floating instructions can be interrupted by the console
+        device.
+
+     .  Traps_Tests--This program tests all operations and instructions        ___________
+        that cause traps, oddities of the stack pointer R6, interrupts,
+        RESET, and WAIT instructions.
+
+
+     In addition to these standard DEC diagnostics, test software is
+
+provided for the non-DEC interface boards.  These diagnostics are:
+
+
+     .  SRI Interrupt-driven 1822 Interface Test--
+
+     .  SRI Robustness Module Test--
+
+     .  ACC DMA 1822 Interface Test--
+
+
+     1.   General Operating Instructions          _______ _________ ____________
+
+
+          The diagnostic programs are loaded into the LSI-11 via
+
+cassette tape as would any user program; instructions for cassette tape
+
+loading are covered in the TIU operating guide.  Before attempting to
+
+load or run the diagnostics, the watchdog timer on the robustness module
+
+(if the TIU is so equipped) must be disabled to prevent spurious
+
+watchdog timeouts.  After loading and option selection, the programs can
+
+be started by giving the
+
+                                  200G
+
+
+          command to ODT.
+
+
+
+
+
+
+
+                                   6
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+          The basic results from running diagnostic programs range from
+
+pass results to error conditions.  Error conditions may result in the
+
+program printing out an error message and halting, or simply halting, in
+
+which case the value of the program counter (the error halt PC+2) is
+
+used to determine the fault.  The use of error information thus obtained
+
+is completely described in the program listing of the diagnostic program
+
+in use.  As the operator becomes more familiar with the use of the
+
+diagnostic program, it may be desirable to invoke certain program
+
+options, as described in the listings, such as loop on error.  This
+
+allows the operator to run the program in an area where a hardware error
+
+is detected.
+
+
+          Pass conditions generally result in a printout of the first
+
+pass and printouts at certain multiples of passes that follow.  A pass
+
+counter is located in each program that can be examined by the operator.
+
+Intermittent errors can be detected by observing the contents of that
+
+location when errors are detected.
+
+
+          The key to effective use of diagnostic programs is in the
+
+ability of the operator to read the diagnostic listing (especially the
+
+comments associated with program instructions that do not execute
+
+properly), and relate the error condition to hardware functions.
+
+Particular locations in the program can be examined to obtain much
+
+useful information about the failure conditions.  Although the operator
+
+should refer to the diagnostic program listings for details of all the
+
+operating options and fault modes, the following sections cover the
+
+common options and fault indications.
+
+                                   7
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     2.   The Basic Instruction Test          ___ _____ ___________ ____
+
+
+          The basic LSI-11 instruction test diagnostic is called
+
+DVKAA.BIN and corresponds to the DEC product code of MAINDEC-11-DVKAA-A-
+
+D.  It tests all the basic instructions of the LSI-11 (except for trap-
+
+type instructions) which includes the control chip, data chip, MICROMS,
+
+PLA, and other circuitry on the LSI-11 CPU module.
+
+
+          After loading the program, it should be started at location
+
+200; there are no test options to be specified.  The program will loop
+
+through the diagnostic tests and "END PASS" will be typed after the
+
+first pass through all of the tests, and then every 256 passes.  A
+
+minimum of two passes should be run.  The execution time of the
+
+diagnostic is less than a second, with 256 passes completed every 20
+
+seconds.
+
+
+          On finding an error, the processor will halt after placing the
+
+error number in location 402.  In most cases, the program listings must
+
+be examined to determine the failure; the comments besides the HALT
+
+tells what was being checked.  In some cases the test can HALT because
+
+of an error in the testing sequence.  When a HALT does occur it is
+
+recommended that the test sequence number (location 404) be checked to
+
+verify that it matches the present test number.  The following summary
+
+indicates the general test category; refer to the program listings to
+
+determine the exact instruction under test.
+
+
+0 - 15 Test of branch, jump, and jump-subroutine instructions.
+
+
+
+                                   8
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+16 - 31 Test of byte instructions with destination mode 0.
+
+32 - 53 Test of word instructions with destination mode 0.
+
+54 - 62 Test of addressing modes using MOV-MOVB instructions.
+
+63 - 76 Test of byte instructions with other than mode 0.
+
+77 - 122 Test of word instructions with other than mode 0.
+
+
+          The diagnostic resides in the low 4K memory bank, address 0 -
+
+17500.  Since a memory problem may cause the processor to apparently
+
+fail the diagnostic, the CPU module should be tested using functional
+
+memory before being returned for repairs.
+
+
+          The following octal locations are of interest when using this
+
+diagnostic:
+
+
+200 The diagnostic starting address is 200.
+
+402 On finding an error, the error number is placed in location 402.
+
+404 The low byte at address 404 contains the number of the test that is
+          being executed.
+
+405 The high byte at address 404 contains the iteration count modulo
+          256.
+
+
+     3.   The Memory Exerciser          ___ ______ _________
+
+
+          The LSI-11 memory exerciser diagnostic is called DZKMA.BIN and
+
+corresponds to the DEC product code of MAINDEC-11-DZKMA-A-D.  It will
+
+test either MOS or CORE memory using worse-case tests.
+
+
+          After loading the program, it can be started at location 200
+
+to perform a test using the default options.  For most applications, the
+
+
+
+                                   9
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+default options will be sufficient.  After starting, the program will
+
+determine the amount of memory in the system and print out the address
+
+of the test as:
+
+                              XXXXX-YYYYY
+
+
+          At the end of a complete series of memory tests, "END PASS" is
+
+printed and the exerciser is restarted.
+
+
+          If the operator types a "^C" while the diagnostic is running,
+
+an error history will be typed.  The history will be produced at the end
+
+of the current test and there may be a short delay while the test
+
+completes.  The error history is intended to highlight if the errors are
+
+due to one bit failing or to addressing errors.  The error history
+
+indicates which bit was failing (in decimal), which 4K memory bank the
+
+error occurred, and the number of times this memory bank failed (maximum
+
+of 377 octal).  The format is:
+
+                        ERROR     BANK     COUNT
+
+
+          After typing the error history, the program halts and may be
+
+continued by typing "P" to the ODT console emulator.  The memory bank
+
+numbers are:
+
+
+        Bank Number     Decimal Addr    Octal Addr
+
+            0               4K          000000 - 017776
+            1               8K          020000 - 037776
+            2              12K          040000 - 057776
+            3              16K          060000 - 077776
+            4              20K          100000 - 117776
+            5              24K          120000 - 137776
+            6              28K          140000 - 157776
+
+
+
+                                   10
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+          When an addressing or data error is detected, an error
+
+printout is typed.  The error printout consists of six octal words
+
+giving the address of the failing memory location, the data that was
+
+expected, the data that was found, the test program's PC at the error
+
+call, the failing error number, and the pass number in the following
+
+format:
+
+           LOCATION   GOOD    BAD     PC     ERROR     PASFLG
+
+
+          In addition, "ADR ERR" will be printed if an addressing error
+
+is suspected.  The test will continue after the error typeout.
+
+
+          If a fatal error is detected, such as a corrupted diagnostic,
+
+the message "ERROR xxx" will be typed where "xxx" is the error number.
+
+The diagnostic usually halts on this type of error.  The various error
+
+conditions are too numerous to list and the operator should refer to the
+
+diagnostic's program listings.
+
+
+          The test time for the diagnostic varies with the amount of
+
+memory under test.  In a typical TIU system with a full complement of
+
+memory, a full test takes approximately 20-25 minutes.
+
+
+     4.   The Extended Instruction Test          ___ ________ ___________ ____
+
+
+     5.   The FIS Instruction Test          ___ ___ ___________ ____
+
+
+
+
+
+
+
+
+
+
+                                   11
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     6.   The Traps Test          ___ _____ ____
+
+
+          The LSI-11 trap-causing instruction test is called DVKAD.BIN
+
+and corresponds to the DEC product code of MAINDEC-11-DVKAD-A.  It tests
+
+all of the operations and instructions that cause traps, oddities of the
+
+stack pointer register 6, interrupts, and the RESET and WAIT
+
+instructions.
+
+
+          After loading the program, store 100 octal in location 422.
+
+This instructs the diagnostic that the extended instruction set option
+
+is in use (EIS and FIS).  After starting the diagnostic at address 200,
+
+it proceeds to check that on all trap operations register 6 is
+
+decremented the correct amount, that the correct PC is saved on the
+
+stack, that the old condition codes and priority are placed on the
+
+stack, and that the new status and condition codes are correct.  Both
+
+the TRAP and EMT instructions are tested to see that all combinations
+
+will trap correctly.  The RTI, RTT, and BPT instructions are also
+
+checked for proper operation.  Special checks are made to see if bus
+
+error traps occur on non-existent memory references and if invalid
+
+instruction traps occur when attempting to execute unused instruction
+
+opcodes.
+
+
+          The program types "END OF PASS" after the first iteration,
+
+which takes 8 seconds, and then after every 15 iterations, approximately
+
+2 minutes.  All errors will cause a HALT; the operator should consult
+
+the program listings to determine the exact test that failed.
+
+
+
+
+                                   12
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                      III   TIU PHYSICAL PACKAGING
+
+
+     Two generations of TIU hardware packaging are in use at SRI.  The
+
+first generation used the commercial DEC PDP-11/03 package containing
+
+the LSI-11 processor and a 4-slot 10" backplane.  The second uses an
+
+SRI-designed enclosure containing the DEC LSI-11/2 processor and a 12-
+
+slot 5" backplane.
+
+
+A.   The PDP-11/03 Packaging     ___ _________ _________
+
+
+     1.   TIU Rear Panel          ___ ____ _____
+
+
+          A special panel, fabricated to fit into the rear of the PDP-
+
+11/03 mounting box, is used as part of the TIU.  It is shown in Figure
+
+1.  The panel contains an 1822 interface bulkhead connector,
+
+connectors for EIA terminal devices, and the necessary cables for
+
+connecting to a DLV11 and the 1822 module.  The panel also contains
+
+controls for selecting a baud rates of 300, 1200, 2400, or 9600.
+
+
+          "Null modem" circuitry is wired between the DLV11 connector
+
+and the EIA rear panel connector (female DB-25S type).  This makes it
+
+possible to directly connect an EIA terminal device such as a Texas
+
+Instruments Silent 700 printer or a Datamedia CRT terminal to the LSI-
+
+11.
+
+
+
+
+
+                                   13
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                       FIGURE 1   TIU REAR PANEL
+
+
+                                   14
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+          Schematic diagrams of the rear panel are shown in Figures 2
+
+and 3.  Refer to Chapter 6 of [4] for signal names for the EIA
+
+interface lines.  Signal names for the 1822 interface lines are given in
+
+subsection III-C below.  Note that in the rear panel wiring, the
+
+"request to send" line is not brought out to the EIA connector.
+
+However, the "busy" line is brought out.  Header pin locations are shown
+
+in Figure 4.  The two connecting cables are permanently wired to the
+
+panel.  When the panel is installed in the PDP-11/03, these two cables
+
+are routed along the top surface of the bottom of the mounting box, with
+
+the connectors extending out the front of the box.  The connectors than
+
+plug into their respective headers on the DLV11 and 1822 modules.  Rear
+
+panel connector types and mating cables are listed in Table 3.
+
+        Label   Panel Connector                 Cable Connector        _____   _____ _________                 _____ _________
+
+        EIA     Cinch DB25S                     Cinch DB25P
+        TTY     Amphenol 126-198                Amphenol 126-195
+        1822    Amphenol MS24264R18B31SN        Amphenol MS24266R18B31PN
+
+
+
+          The DLV11 serial line unit contains baud rate generator
+
+circuitry for producing the UART clock signals.  Normally, the baud rate
+
+is selected by jumpers installed on the DLV11 board.  In the TIU,
+
+however, the DLV11 is modified to allow remote selection of baud rates.
+
+The DLV11 modification is described in the chapter on terminal
+
+interfaces.
+
+
+
+
+
+
+
+
+
+                                   15
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            FIGURE 2   TIU REAR PANEL WIRING (SHEET 1 OF 2)
+
+
+                                   16
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            FIGURE 3   TIU REAR PANEL WIRING (SHEET 2 OF 2)
+
+
+                                   17
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    FIGURE 4   HEADER PIN LOCATIONS
+
+
+                                   18
+19 April 1979                  D R A F T                        at 16:40
+
+19 April 1979                  D R A F T                        at 16:40
+
+                                Table 1
+
+
+                       TIU REAR PANEL CONNECTORS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   20
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+B.   LSI-11/2 Packaging     ________ _________
+
+
+                           
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   21
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                       IV   THE LSI-11 PROCESSORS
+
+
+     The TIU hardware is based on two different versions of the LSI-11
+
+processor:  the original LSI-11 and the newer LSI-11/2.  The two
+
+processors are software compatible (except the LSI-11/2 has a few
+
+microcode bugs corrected), but because of the different module size,
+
+they are not interchangeable.  The KEV11 extended instruction set option
+
+is installed on both processors.
+
+
+A.   The KD-11F Processor     ___ ______ _________
+
+
+     The LSI-11 KD-11F processor (module number M7264) is used in the
+
+first version of the TIU hardware.  This module contains the LSI-11
+
+processor and 4K words of read/write memory (RAM) on a single quad-width
+
+(10") board.  Three revisions of the KD-11F processor are in common
+
+use:  revision C, D, and E.  The KD-11F processor (module M7264) is used
+
+with the factory installed jumpers.  The only reconfiguration necessary
+
+is when the robustness module is installed; the power-up mode must be
+
+changed from the factory-selected mode 0 to mode 2 by adding wire-wrap
+
+jumper W6.
+
+
+
+
+
+
+
+
+
+
+
+                                   22
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+B.   The KD11-H Processor     ___ ______ _________
+
+
+     The LSI-11/2 KD-11H processor (module number M7270) is used in the
+
+later version of the TIU.  This module contains the LSI-11/2 processor
+
+on a single dual-width (5") board.  The KD11-H processor is used with
+
+the factory installed jumpers.  The only reconfiguration necessary is
+
+when the robustness module is installed; the power-up mode must be
+
+changed from the factory-selected mode 0 to mode 2 by adding wire-wrap
+
+jumper W6.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   23
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                          V   LSI-11 MEMORIES
+
+
+     The LSI-11 microcomputer is available with a diverse set of memory
+
+products including RAM, ROM, and EPROM memories of various sizes and
+
+configurations.  Two types of memory modules are used in the TIU
+
+hardware--one for the PDP 11/03 package and one for the LSI-11/2.  The
+
+PDP-11/03 uses an INTEL 24K word memory board and the LSI-11/2 uses the
+
+DEC MSV11-DD 32K word memory module.
+
+
+A.   PDP-11/03 Memory     _________ ______
+
+
+     The LSI-11 processor in the PDP 11/03 package contains 4K words of
+
+RAM of the CPU card; this processor-resident memory is configured as
+
+bank 0, corresponding to addresses in the range 0 through 017776.  The
+
+INTEL in-1611 24K word memory module is used to expand the memory to a
+
+full complement of 28K words.  The in-1611 is configured as banks 1-6,
+
+corresponding to addresses in the range 020000 through 167776.  Each in-
+
+1611 has a DIP switch which is used to set the starting address and
+
+address space location.  To configure the in-1611 for normal TIU
+
+operation, switch positions 1 and 8 should be CLOSED and switch
+
+positions 2 through 7 should be OPEN.
+
+
+
+
+
+
+
+
+
+                                   24
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+B.   LSI-11/2 Memory     ________ ______
+
+
+     The LSI-11/2 processor does not have the onboard memory that was
+
+present in the LSI-11.  Instead, a single memory card is available which
+
+provides the full complement of 32K words of memory.  Since the
+
+robustness card uses 3K words of the top 4K memory bank, the full memory
+
+complement is reduced to 28K; same as for the LSI-11 using the INTEL
+
+memory board.  Each MSV-11DD (module number M8044-D) has a DIP switch
+
+which is used to configure the starting address of the memory board.
+
+For normal operation, switch positions 1 through 5 should in the ON
+
+position which is achieved by depressing the ON side of the rocker.  No
+
+other configuration changes are necessary.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   25
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                    VI   LSI-11 TERMINAL INTERFACES
+
+
+     Terminal interfaces to the TIU are in accordance with the RS-232C
+
+standard and use the EIA serial signalling scheme with an ASCII
+
+character set.  Three types of terminal interfaces are in use:  the
+
+DLV11 single channel unit, the DLV11-E single channel unit with modem
+
+control, and the DLV11-J quad channel unit.
+
+
+A.   The DLV-11 Serial Interface Card     ___ ______ ______ _________ ____
+
+
+     The DLV11 serial interface card provides a single full-duplex
+
+terminal interface.  The DLV11 unit contains baud rate generator
+
+circuitry for producing the UART clock signals.  Normally, the baud rate
+
+is selected by jumpers installed on the DLV11 board.  In the TIU,
+
+however, the DLV11 is modified to allow remote selection of baud rates.
+
+
+     The DLV11 modification consists of wiring the four control inputs
+
+of the baud rate generator IC to four unused pins on the interface
+
+connector (J1 on the card schematic), and installing four bypass
+
+capacitors between these lines and ground.
+
+
+     This modification, illustrated in Figure 5, is installed as
+
+follows:
+
+
+     (1)  Remove any FR jumpers on the DEC DLV11 board.
+
+
+
+
+                                   26
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     (2)  On the bottom of the board, wire from the FR jumper pads
+          closest to E7 (4702 IC) to the Berg 40-pin header as
+          follows:
+        
+                     Pad      Header
+     (3)                  FR0  to  J1-R
+                     FR1  to  J1-P
+                     FR2  to  J1-N
+                     FR3  to  J1-L
+        
+
+     (4)  Secure the wires tightly to the board with hot-melt glue,
+          RTV silicone rubber, or similar bonding agent.
+
+     (5)  On top of the board, install four small 10 nF ceramic
+          capacitors between the four pads used in step 2 and a
+          ground wire connected to the ground bus at one end of the
+          bypass capacitor adjacent to pin 8 of E7 (4702 IC).  See
+          Figure 5 for these connections.  Apply a piece of
+          insulating tape to the PC board under the capacitor
+          ground leads.
+
+     (6)  Check, and if necessary install, jumpers CL1, CL2, CL3,
+          jumper EIA, and 5 nF capacitor between TP1 and TP2 on the
+          DLV11 board.
+
+
+     Other jumpers are installed as applicable, according to
+
+instructions given in Chapter 6 of the PDP-11/03 User's Manual  [].                                       _________ ______ ______
+
+For operation with either TTY or EIA terminals, remove any jumpers at
+
+P1, B1, B2, SB, and NP.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   27
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                     FIGURE 5   DLV11 MODIFICATION
+
+
+                                   28
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+B.   The DLV11-E Serial Interface Card With Modem Control     ___ _______ ______ _________ ____ ____ _____ _______
+
+
+     The DLV11-E serial interface card incorporates the necessary
+
+signalling circuitry to control a modem.
+
+
+C.   The DLV11-J Quad Channel Serial Interface Card     ___ _______ ____ _______ ______ _________ ____
+
+
+     The DLV11-J is program-compatible with the DLV-11 and provides four
+
+full-duplex terminal connections per dual-width board.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   29
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                    VII   LSI-11 TIU 1822 INTERFACES
+
+
+     The 1822 interface standard was initially specified by BBN for the
+
+interconnection of a host and an IMP in the ARPANET.  The distant host
+
+(DH) version of this standard has been adopted for the PRU-host
+
+interface in the packet radio project. 
+
+
+     The TIU software will support either of two types of 1822
+
+interfaces, allowing a tradeoff between cost and performance.  The
+
+initial TIU 1822 interface was interrupt-driven and used a DRV11
+
+parallel interface unit.  The performance of this interface is limited
+
+by the time required for interrupt processing.  To overcome this
+
+limitation, Associated Computer Consultants, under contract to SRI,
+
+designed and fabricated an 1822 interface based on a multichannel
+
+microprogrammable DMA controller.  This 1822 interface will handle
+
+several DMA 1822 channels, removing the burden of interrupt processing
+
+from the LSI-11 CPU.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   30
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+A.   Interrupt-driven 1822 Interface     ________________ ____ _________
+
+
+     The 1822 interface module is contained on an 8.25 x 5.2 inch
+
+printed circuit board, which occupies one half-size (dual) location in
+
+the backplane.  The module contains two 40-pin connectors for
+
+interconnecting to the DRV11 module, and one 26-pin connector for
+
+interfacing with an 1822 device such as a PRU.  Except for power and
+
+ground (and jumpers to pass DMA grant and interrupt acknowledge signals
+
+along the bus), no connections are made to the LSI-11 backplane.  Power
+
+requirements are 0.6 amperes at +5 vdc.
+
+
+     The 1822 interface module is normally installed in the backplane
+
+directly above or below the DRV11 module that drives it.  Two 40-
+
+conductor flat ribbon cables are required for this purpose.  The 26-pin
+
+input/output connector is normally attached to a cable from the 1822
+
+bulkhead connector on the rear panel assembly, which is described in the
+
+next section.
+
+
+     A photograph of the SRI-constructed 1822 module is shown in Figure
+
+6.  The interface uses 17 TTL integrated circuits, 2 resistor
+
+networks, a relay, and some discrete components.  The locations of parts
+
+are shown in Figure 7, and a list of parts is given in Table 1.
+
+Schematic diagrams are illustrated in Figures 8 and 9, and schematic
+
+nomenclature is given in Figure 10.  The cost for all parts and the PC
+
+board is approximately $90, single lot quantities.  Assembly and testing
+
+costs for the module would depend on labor charges and quantity
+
+
+
+
+                                   31
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           FIGURE 6   PHOTOGRAPH OF SRI LSI-11 1822 INTERFACE
+
+
+                                   32
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+       FIGURE 7   LSI-11 1822 INTERFACE, PC BOARD PARTS LOCATIONS
+
+
+                                   33
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+produced.  The companion DEC DRV11 module costs $175-$200 depending on
+
+the source.
+
+
+     Signal mnemonics for the 1822 interface lines are:
+
+
+        Suffix H = Active HI, suffix L = Active LO
+
+Interface with DRV11 (J1 and J2)_________ ____ _____ ___ ___ ___
+
+        DRV11 defined signals:
+
+                AINIT   Initialize A
+                NDR     New data ready from DRV11
+                REQA    Interrupt request A
+                OUT(N)  Parallel data from DRV11, N:0-7
+                DT      Data transmitted to DRV11
+                REQB    Interrupt request B
+                IN(N)   Parallel data to DRV11, N:0-7
+
+        1822 interface defined signals:
+
+                TEN     1822 transmit enable, CSR0H
+                TLB     Transmit last byte, OUT11H
+                SHR     Set host ready, OUT12H
+                SHNR    Set host not ready, OUT13H
+                HNR     Host not ready status, IN13H
+                REN     1822 receive enable, CSR1H
+                RLB     1822 received last byte, IN11H
+                INR     1822 IMP not ready, IN12H
+                CS      Check status (INR or RLB) IN15H.
+
+Interface with 1822 devices (J3)_________ ____ ____ _______ ____
+
+                HMR     Host master ready
+                HRT     Host ready test
+                IMR     IMP master ready
+                IRT     IMP ready test
+                LHB     Last host bit
+                LIB     Last IMP bit
+                RFNHB   Ready for next host bit
+                RFNIB   Ready for next IMP bit
+                TYHB    There's your host bit
+                TYIB    There's your IMP bit
+
+
+
+
+
+
+                                   34
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ FIGURE 8    SCHEMATIC DIAGRAM, LSI-11 1822 INTERFACE, TRANSMIT SECTION
+
+
+                                   35
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ FIGURE 9    SCHEMATIC DIAGRAM, LSI-11 1822 INTERFACE, RECEIVE SECTION
+
+
+                                   36
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              FIGURE 10    SCHEMATIC DIAGRAM NOMENCLATURE
+
+
+                                   37
+19 April 1979                  D R A F T                        at 16:40
+
+19 April 1979                  D R A F T                        at 16:40
+
+                                Table 2
+
+
+                    LSI-11 1822 INTERFACE PARTS LIST
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   39
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+Integrated Circuits__________ ________
+
+            Location     Type            ________     ____
+
+                 4       8830
+                 8      74123
+                 9       7402
+                10       8830
+                14       7400
+                15      74193
+                16       7404
+                17       8820
+                18       8820
+                21      74123
+                22       7402
+                23      74164
+                26       7427
+                27       7474
+                28      74152
+                33      74193
+                34       7400
+
+Resistors_________
+
+
+
+                 1      2K ohm, 1/8W, 5%
+                 5      4.7K ohm, 1/8W, 5%
+                 4      22K ohm, 1/8W, 5%
+                 1      Beckman 898-3-100 ohm network (RN1)
+                 1      Beckman 893-3-180 ohm network (RN2)
+
+Capacitors__________
+                 3      100 pF mica
+                 1      110 pF mica
+                12      0.1 microfarad tantalum
+
+Diodes______
+                 1      1N4454
+
+Relay_____
+                 1      Magnecraft W107-DIP-1 or equiv. (K1)
+
+Headers_______
+                 2      Berg 65483-004 (J1, J2)
+                 1      Berg 65483-002 (J3)
+
+
+
+
+
+
+                                   40
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     The 1822 interface implements a four-way handshake procedure to
+
+transfer bits serially between the PRU and the TIU.  This is a full-
+
+duplex interface, with transmit and receive logic functioning
+
+independently and asynchronously.  Each uses a ready-for-next-bit (RFNB)
+
+and there's-your-bit (TYB) pair of control signals to pass data bits
+
+over the interface.  A last data bit (LDB) control signal exists to
+
+indicate data transfer completion.  In addition, a ready bit (RB)
+
+control signal exists for each side of the interface to indicate such
+
+conditions as power failure, logic failure, or transfer restart.
+
+
+     The LSI-11 1822 interface is designed to work in conjunction with
+
+the DRV11 parallel line unit (or the DR11-C parallel line unit, for PDP-
+
+11s).  This combined logic provides byte-parallel data transfers between
+
+the PR and the TIU.  However, it is to be noted that the PRU is capable
+
+of 16-bit transfers only, so an even number of 8-bit bytes must always
+
+be transferred.  Transmit and receive logic is enabled and controlled
+
+independently through the use of three LSI-11 registers: a control and
+
+status register (CSR), an input register (INBUF), and an output register
+
+(OUTBUF).  Byte transfer can be either polled, by checking a status bit
+
+in the CSR, or interrupt-driven.  The transfer mode is set in the CSR.
+
+
+     The 1822 interface board generates a signal (interrupt or status,
+
+depending upon the CSR mode enabled) whenever the IMP READY line is
+
+down.  Note that this signal is held on for as long as that state exists
+
+and must be processed accordingly by the software.
+
+
+
+
+
+                                   41
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     Specifications for the three control and data registers are given
+
+in Figures 11-13.  The programmer need be concerned with these three
+
+registers only, when programming the transmit and receive logic.  For a
+
+more detailed discussion of the 1822 and DRV11 logic used in the TIU,
+
+refer to [1] and [4].
+
+
+     Tests of the data transfer rate across the TIU 1822 interface using
+
+SRI's initial LSI-11 traffic source software gave the throughput values
+
+shown in Table 2:
+
+
+
+        Transmit Only                Looped Back        ________ ____                ______ ____
+        (into hardware sink)         (into 1822-receive port)        _____ ________ _____         _____ ____________ _____
+
+        Time    Rate    Net             Time    Rate    Net
+Packet  per     (pkts   throughput      per     (pkts   throughput
+Length  packet  per     of text         packet  per     of text
+(words) (sec)   sec)    (bits/sec)      (sec)   sec)    (bits/sec)_______ _____   ____    __________      _____   ____    __________
+
+ 127    0.0094   105    197K            0.04     25     46K
+  63    0.0047   213    177K            n/a      --     --
+  30    0.0023   435    132K            n/a      --     --
+  10    0.0008  1250      0(*)          0.0035  285      0(*)
+
+---------------
+(*)  Text throughput calculations assume 10 words of packet
+     header for overhead, thus minimum-length packets show
+     zero net throughput even though 10 words of data were
+     actually transferred.
+
+
+
+     To provide the 1822 handshake for the transmit-only tests, a
+
+hardware simulator was used.  A simple loopback connector was used for
+
+the loopback tests.  The traffic source software used for these tests
+
+used polling (test and transfer) for byte output, and an interrupt
+
+routine for byte input.  The number of CPU cycles needed is
+
+
+
+                                   42
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    FIGURE 11    LSI-11 1822 CONTROL STATUS REGISTER (DRCSR) 167770
+
+
+                                   43
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      FIGURE 12   LSI-11 1822 TRANSMIT REGISTER (DROUTBUF) 167772
+
+
+                                   44
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+       FIGURE 13   LSI-11 1822 RECEIVE REGISTER (RDINBUF) 167774
+
+
+                                   45
+19 April 1979                  D R A F T                        at 16:40
+
+19 April 1979                  D R A F T                        at 16:40
+
+                                Table 3
+
+
+             MEASURED TRANSFER RATES ON TIU 1822 INTERFACE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   47
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+significantly less for polling than for interrupt drive, although the
+
+interrupt-per-byte technique will no doubt be used in future
+
+(multiprogrammed) versions of the TIU for both input and output.  We
+
+observed that the transmit-only tests ran about four times faster than
+
+the loopback tests (simultaneous transmit and receive), so we inferred
+
+that the polled transmitter runs three times faster than the interrupt-
+
+driven receiver.  With that assumption, the transfer rate for interrupt-
+
+driven I/O was estimated to be approximately 66K bits/sec (197K/3), for
+
+full-length packets.  This agrees well with desk checks of time
+
+requirements for typical interrupt service routines for the LSI-11.
+
+
+B.   Direct Memory Access 1822 Interface     ______ ______ ______ ____ _________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   48
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+                      VIII   TIU ROBUSTNESS MODULE
+
+
+     The TIU robustness module is a 5 x 8.5 inch printed circuit board
+
+for LSI-11 microcomputer systems.  It occupies one dual height location
+
+in the TIU backplane.  Power requirements for the module are 0.7 amperes
+
+at +5 vdc.  Bus loading is one LSI-11 standard load on all bus lines
+
+except BDOUT-L and BRPLY-L, which present two standard loads each.
+
+Figure 14 is a photograph of the robustness card.
+
+
+     The primary functions of the unit are to provide the means for
+
+obtaining an initial program load, to monitor the resident program for
+
+continuous execution, and to provide a means of software reloading upon
+
+detecting failure.  Should program execution be suspended for a
+
+specified maximum length of time, the watchdog timer incorporated in the
+
+unit will initiate a bootstrap program stored in nonvolatile memory (UV-
+
+EPROM) on the card.  In addition, 256 words of volatile memory (RAM) are
+
+incorporated into the unit for exclusive use by the bootstrap program.
+
+A secondary function of the hardware system is to provide two switch-
+
+selectable numeric "constants" which may be accessed by the LSI-11
+
+software.  These two constants (implemented as read-only registers) are
+
+used to provide the system software with unit identification
+
+information.
+
+
+
+
+
+
+                                   49
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+             FIGURE 14   PHOTOGRAPH OF SRI ROBUSTNESS CARD
+
+
+                                   50
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     The robustness hardware card consists of four functional
+
+components:
+
+
+     .  A watchdog timer
+
+     .  3072 words of UV-EPROM memory
+
+     .  256 words of RAM memory
+
+     .  Two switch-selectable "constants" registers.
+
+
+     The DEC LSI-11 microcomputer provides automatic power-fail hardware
+
+and four modes of operation on power restoration, as explained below:
+
+
+     .  Mode 0--the LSI-11, on power-up, starts execution at the address
+        contained in the power-fail vector (location 24, octal); this is
+        useful only in applications where programs are stored in
+        nonvolatile memory.
+
+     .  Mode 1--the LSI-11 enters the console emulator ODT microcode;
+        this is the normal mode of operation.
+
+     .  Mode 2--the LSI-11 starts execution at location 173000; this
+        mode is used to initiate a bootstrap operation from non-volatile
+        memory.
+
+     .  Mode 3--the LSI-11 executes a special microcode routine.
+
+To utilize the remote loading capability of the SRI robustness module,
+
+the LSI-11 CPU must be configured to operate in power-fail mode 2: 
+
+jumping to location 173000 upon power-restoration.  Since this location
+
+is within the top 4K of the LSI-11 address space (this top 4K is
+
+sometimes called the I/O page), its use requires that the addresses of
+
+all I/O device registers lie in the top 1K (174000 through 177776) with
+
+the first 3K (160000 through 173776) reserved for the bootstrap code.
+
+
+
+
+
+
+                                   51
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+A.   Watchdog Timer     ________ _____
+
+
+     A watchdog timer is provided on the robustness card to provide a
+
+mechanism for detecting a processor halt or software stall.  This timer
+
+can be reset asynchronously on command by the LSI-11 software.  For
+
+maximum protection against "insane" software, the timer is designed to
+
+reset only if a specified byte value of 370 or 371 (octal) is written
+
+into location 175000, the address assigned to the timer.  The
+
+instruction for resetting the timer is:
+
+                          MOVB #370, @#175000
+
+
+     If the watchdog timeout interval expires, the timer will initiate a
+
+power-fail sequence by exercising the LSI-11 bus lines BDCOK-H and
+
+BHALT-L in the following sequence:
+
+
+     (1)  BHALT-L pulled low,
+
+     (2)  BDCOK-H pulled low,
+
+     (3)  BHALT-L released,
+
+     (4)  BDCOK-H released.
+
+
+     This sequence of controls temporarily halts the processor and then
+
+activates the microcode power-up sequence in a manner which retains
+
+memory data integrity.  With the LSI-11 CPU configured for mode 2 power-
+
+up operation, the processor will begin execution at memory location
+
+173000 which contains the start of a bootstrap program residing in the
+
+UV-EPROM memory.
+
+
+
+
+
+                                   52
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     The timeout interval is selected by choice of a timing capacitor C
+                                                                       t
+
+whose physical location is shown in Figure 15.  The relationship
+
+between the value of C  and the timeout interval is:
+                      t
+
+                       C (mfd) = .038T (minutes)
+                        t
+
+
+     Unless manually inhibited, the timer runs continuously as long as
+
+power is applied to the system.  An onboard toggle switch, accessible
+
+without removing the card, can be used to manually inhibit the watchdog
+
+function as necessary for software development or hardware maintenance.
+
+
+     If the software routine is not successfully started as a result of
+
+a bootstrap operation, the timer will cause repetitive bootstrap
+
+initiations at a period equal to the timeout interval until a successful
+
+system start-up is accomplished.  The timer accuracy is approximately
+
++10 percent._
+
+
+B.   UV-EPROM Memory     ________ ______
+
+
+     Up to 3K words of UV-EPROM memory are supplied for the purpose of
+
+storing the bootstrap program.  The circuit is designed so that the PROM
+
+memory can be implemented with either 2758 (1K by 8 bit) or 2716 (2K by
+
+8 bit) PROM chips.  The three possible PROM configurations and
+
+respective jumper positions are shown in Figure 16.  The board is
+
+initially being implemented with 2758 PROMs as shown in Figure 16a.
+
+The address range for the PROM memory is from locations 160000 through
+
+
+
+
+                                   53
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              FIGURE 15   SRI ROBUSTNESS CARD PARTS LAYOUT
+
+
+                                   54
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      FIGURE 16   PROM AND PROM-JUMPER CONFIGURATION ALTERNATIVES
+
+
+                                   55
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+173777.  Attempting to execute a WRITE within this address range will
+
+result in an LSI-11 bus timeout error.
+
+
+     Because the LSI-11 processor fetches the source operand for the
+
+MTPS instruction and four of the KEV-11's EIS instructions in a manner
+
+incompatible with PROM operation, special care must be exercised.
+
+Following are the five LSI-11 instructions that are affected (see
+
+Section 1, Chapter 7, page 7.3 of Ref. 1 for further details).
+
+                       MTPS, MUL, DIV, ASH, ASHC
+
+
+C.   RAM Memory     ___ ______
+
+
+     The robustness hardware module also contains 256 words of volatile
+
+RAM memory residing in the address space 174000 through 174777.  This
+
+RAM is intended for exclusive use by the bootstrap/diagnostic PROM
+
+programs.
+
+
+D.   The Constants Registers     ___ _________ _________
+
+
+     Two groups of switches are installed on the robustness module card.
+
+One group, consisting of a pair of 8-bit DIP switch units labeled "ID-H"
+
+and "ID-L", is provided for setting a software 16-bit accessible TIU ID.
+
+This switch setting can be read by software with the instruction:
+
+                           MOV @#175002, DSTN
+
+
+     An attempted WRITE into location 175002 will cause an LSI-11 bus
+
+timeout to occur.
+
+
+
+
+
+                                   56
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+setting a software accessible network ID.  This setting can be read with
+
+the byte-move instruction:
+
+                          MOVB @#175000, DSTN
+
+
+     Note that location 175001 contains a value of "377," so that
+
+reading a full word instead of a byte from location 175000 would result
+
+in an invalid network number.  The locations of these DIP switches are
+
+shown in Figure 15.
+
+
+E.   Hardware Description and Theory of Operation     ________ ___________ ___ ______ __ _________
+
+
+     Schematic diagrams of the LSI-11 robustness hardware module are
+
+shown in Figures 17-19.
+
+
+      Four 4-bit DEC DC004 transceiver devices U1, U2, U3, and U4
+
+provide 16-bit bidirectional buffering between the LSI-11 bus and the
+
+robustness card data bus.  Additionally, these devices compare address
+
+data appearing on the LSI-11 bus with the octal values 175000, 175001,
+
+175002, and 175003.  If a match occurs when the signal BSYNC-L drops
+
+low, either the output SEL0 or the signal SEL2 of the DEC DC004 protocol
+
+device U5 is latched low for the duration of the data transfer cycle.
+
+If the transfer is a read operation, the LSI-11 processor will pull
+
+BDIN-L low.  At this point, if SEL0 is low, corresponding to addresses
+
+175000 or 175001 being selected, the open-collector hex inverter outputs
+
+of device U16 and two sections of device U15 will be pulled low,
+
+asserting the "NET ID" DIP switch settings onto the local bus.
+
+
+
+                                   57
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            FIGURE 17   TIMER AND SWITCH REGISTER SCHEMATIC
+
+
+                                   58
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           FIGURE 18   MEMORY SELECT AND RAM MEMORY SCHEMATIC
+
+
+                                   59
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   FIGURE 19   PROM MEMORY SCHEMATIC
+
+
+                                   60
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+Alternatively, if SEL2 is low, corresponding to addresses 175002 or
+
+175003 being selected, open-collector hex inverter outputs of devices
+
+U13, U14, and part of U15 are pulled low, causing the settings of the
+
+"ID-L" and "ID-H" DIP switches to be asserted onto the local bus.  The
+
+combination of a local device being selected and BDIN-L being asserted
+
+causes the transceivers U1, U2, U3, and U4 to be in the transmit state,
+
+and the switch data passed on from the local bus to the LSI-11 bus.
+
+
+     If the data transfer is a write operation, the LSI-11 will assert
+
+BDOUT-L when it is presenting valid data on the bus.  If SEL0 is low,
+
+corresponding to address 175000 or 175001 having been recognized, and if
+
+an even address, i.e. 175000, has been recognized, causing OUTLB to go
+
+low on the assertion of BDOUT-L, then the 8-input NAND gate U7 will be
+
+activated.  If the low-byte data has a value of 370 or 371 at this time,
+
+the output of U7 will drop low to cause resetting of the watchdog timer
+
+counter U8.
+
+
+     The capacitor and resistor associated with device U5 determines a
+
+timeout interval which causes the signal BRPLY-L to be asserted low a
+
+specific time after the initiation of a transaction via U5.  This
+
+signals the LSI-11 processor that sufficient time has been granted for
+
+the local device to respond with, or to receive, data.  The processor
+
+then terminates the data transfer cycle by releasing BSYNC-L.
+
+
+     The watchdog timer is implemented with a NE555V multivibrator U6, a
+
+14 stage divider U8, and a NAND chip U9.  The primary purpose of the
+
+
+
+
+                                   61
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+NAND chip is to generate the correct sequence of operations on lines
+
+BDCOK-L and BHALT-L to simulate power-down and power-up in a manner
+
+which retains memory integrity.  This occurs when bit 14 of the divider
+
+goes high.  An "AUTO-BOOT INHIBIT" switch is connected to the 14-stage
+
+counter CLEAR input to either hold the counter in the reset state or, in
+
+the alternate position, to allow resetting of the counter by U7 as
+
+described above.
+
+
+     The DEC DC004 device U22 handles protocol for the memory section of
+
+the robustness hardware module.  A logic network consisting of three
+
+gates of U23 and a gate from U12 senses addresses in the range of from
+
+160000 to 174777, and the output of this network is used to enable the
+
+protocol device U22.  U22 is wired so that SEL0, SEL1, SEL2, and SEL3
+
+indicate selection of, respectively, the first, second, and third 1K
+
+sections and the lower 256 words of the fourth 1K section of bank 7 of
+
+the LSI-11 memory space.  These four lines select the proper set of
+
+memory devices to be accessed during the remainder of the data transfer
+
+cycle.  At the beginning of each bus transfer cycle, the LSI-11
+
+processor pulls BSYNC-L low indicating that an address is being asserted
+
+onto the LSI-11 bus.  This signal causes devices U19, U20, and U21 to
+
+latch the lower 12 bits, excluding bit 0, of the address data, and to
+
+hold this address data until BSYNC-L is brought high at the end of the
+
+transfer cycle.  If memory devices on the robustness module have been
+
+selected as indicated by the SEL outputs of U22, the transfer takes
+
+place to or from these devices in response to the bus control signals
+
+
+
+
+                                   62
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+BDIN-L, BDOUT-L, and BWTBT-L.  The timing of these signals is shown in
+
+Figure 20.
+
+
+     A parts list for the robustness hardware module is given in Table
+
+4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   63
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              FIGURE 20   ROBUSTNESS MODULE TIMING DIAGRAM
+
+
+                                   64
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+                                Table 4
+
+
+                     SRI ROBUSTNESS CARD PARTS LIST
+
+
+
+     INTEGRATED CIRCUITS     __________ ________
+
+     Device      Type                 Function     ______      ____                 ________
+
+       U1        DEC DC005            Bus transceiver
+       U2        DEC DC005            Bus transceiver
+       U3        DEC DC005            Bus transceiver
+       U4        DEC DC005            Bus transceiver
+       U5        DEC DC004            Bus protocol
+       U6        Signetics NE555V     Timer
+       U7        74LS30               Signal 8-in NAND
+       U8        MC14020B             MOS 14-bit counter
+       U9        MC14011B             MOS quad 2-in NAND
+       U10       DS8837               Bus receiver
+
+       U12       74LS10               Triple 3-in NAND
+       U13       74LS05               Open collector hex inverter
+       U14       74LS05               Open collector hex inverter
+       U15       74LS05               Open collector hex inverter
+       U16       74LS05               Open collector hex inverter
+       U17       74LS04               Hex inverter
+       U18       74LS04               Hex inverter
+       U19       74LS75               Quad latch
+       U20       74LS75               Quad latch
+       U21       74LS75               Quad latch
+       U22       DEC DC004            Bus protocol
+       U23       74LS02               Quad 2-in NOR
+       U24       2111A-4              256 x 4 bit RAM
+       U25       2111A-4              256 x 4 bit RAM
+       U26       2111A-4              256 x 4 bit RAM
+       U27       2111A-4              256 x 4 bit RAM
+       U28       Intel 2758B          1K x 8 bit PROM
+       U29       Intel 2758B          1K x 8 bit PROM
+       U30       Intel 2758B          1K x 8 bit PROM
+       U31       Intel 2758B          1K x 8 bit PROM
+       U32       Intel 2758B          1K x 8 bit PROM
+       U33       Intel 2758B          1K x 8 bit PROM
+       U34       74LS04               Hex inverter
+       U35       MC75451P             Bus driver
+
+
+
+
+
+
+                                   65
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+     CAPACITORS:     ___________
+
+     Quan     Type     ____     ____
+
+      14      0.01 mFd 10 volt 20%
+      13      0.22 mFd 10 volt 20%
+       2      33   mFd 10 volt 80%
+       2      680   pF 10 volt 10%
+       1      .056 mFd 10 volt 10%
+
+
+     RESISTORS:     __________
+
+     Quan     Type     ____     ____
+
+        1      4.7K 1/4 watt 10%
+        4      2.7K 1/4 watt  5%
+        2      100K 1/4 watt  5%
+        1        1K 1/4 watt 10%
+        2      4.7K BOURNS 4310R-101-472
+        9           resistor, single-in line package
+        1       11K 1/4 watt 10%
+        1       56K 1/4 watt 10%
+
+
+     SWITCHES:     _________
+
+     Quan     Type     ____     ____
+
+        1      SPST miniature toggle
+        3      8-unit SPST rocker DIP
+
+
+     SOCKETS:     ________
+
+     Quan     Type     ____     ____
+
+        6      24-pin low profile DIP, PC terminals
+
+
+     PC BOARD:     __ ______
+
+     Quan     Type     ____     ____
+
+        1      5" x 8.5" PC board, gold plated
+                 connector fingers
+
+
+
+
+
+
+                                   66
+19 April 1979                  D R A F T                        at 16:40
+
+
+
+
+
+
+
+                               REFERENCES
+
+
+
+1.
+
+
+2.
+
+
+3.   Digital Microcomputer Handbook, Digital Equipment Corporation     _______ _____________ ________
+     (1976).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   67
+

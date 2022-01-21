@@ -1,0 +1,11 @@
+	.TITLE	LOCGATBL-1	Subnet to local gate table
+
+	.GLOBL	$EXTGT		;Gateway to external nets
+	.GLOBL	$LCLGT		;Gateway to mitnet subnets
+
+	.CSECT	XMACHD, STATIC
+
+$EXTGT:	.BYTE	4		;arpanet gateway
+$LCLGT:	.BYTE	5		;local bridge
+
+	.END
